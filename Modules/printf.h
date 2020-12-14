@@ -40,6 +40,12 @@
 extern "C" {
 #endif
 
+#ifdef DEBUG
+  #define SPAM(a) printf_ a
+#else
+  #define SPAM(a) (void)0
+#endif
+
 
 /**
  * Output a character to a custom device like UART, used by the printf() function

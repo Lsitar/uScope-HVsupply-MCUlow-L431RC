@@ -8,8 +8,9 @@
 #pragma once
 
 #include "main.h"	// for GPIO's name definition, HAL lib, System struct
+#include "printf.h"	// for SPAM macro
 
-/*** exported types ***********************************************************/
+/*** Exported types ***********************************************************/
 
 enum eState
 {
@@ -19,7 +20,7 @@ enum eState
 };
 
 
-/*** exported inline snippets *************************************************/
+/*** Exported inline snippets *************************************************/
 
 static inline void HAL_GPIO_WritePinLow(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin)
 {
@@ -31,13 +32,14 @@ static inline void HAL_GPIO_WritePinHigh(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin)
 	GPIOx->BSRR = (uint32_t)GPIO_Pin;
 }
 
-static inline void powerSwitchOn (void)
+static inline void powerLockOn (void)
 {
 	HAL_GPIO_WritePinHigh(PWR_LOCK_GPIO_Port, PWR_LOCK_Pin);
 }
 
-static inline void powerSwitchOff (void)
+static inline void powerLockOff (void)
 {
+	SPAM(("%s\n", __func__));
 	HAL_GPIO_WritePinLow(PWR_LOCK_GPIO_Port, PWR_LOCK_Pin);
 }
 
@@ -81,9 +83,10 @@ static inline void ledRed(enum eState state)
 		HAL_GPIO_TogglePin(LED_RED_GPIO_Port, LED_RED_Pin);
 }
 
+/*** Exported functions *******************************************************/
 
-
-
+void ledDemo(void);
+void readKeyboard(void);
 
 
 

@@ -32,7 +32,7 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "printf.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -127,6 +127,7 @@ struct sSystem
 };
 
 extern struct sSystem System;
+
 
 /* USER CODE END Private defines */
 
