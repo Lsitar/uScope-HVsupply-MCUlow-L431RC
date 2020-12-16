@@ -128,6 +128,15 @@ struct sSystem
 
 extern struct sSystem System;
 
+#define HALT_IF_DEBUGGING()										\
+	do {														\
+		if ((*(volatile uint32_t *)0xE000EDF0) & (1 << 0)) {	\
+			__asm__("BKPT");									\
+		}														\
+	} while (0)													\
+
+#define _OPT_OFF	__attribute__((optimize("-O0")))
+
 
 /* USER CODE END Private defines */
 

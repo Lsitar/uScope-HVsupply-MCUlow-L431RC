@@ -86,7 +86,7 @@ static void MX_TIM1_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_ADC1_Init(void);
 /* USER CODE BEGIN PFP */
-
+static void init(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -130,6 +130,7 @@ int main(void)
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   powerLockOn();
+  init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -142,15 +143,6 @@ int main(void)
 
 	  readKeyboard();
 	  ledDemo();
-
-//	  	  ledBlue(TOGGLE);
-//	  	  HAL_Delay(250);
-//	  	  ledGreen(TOGGLE);
-//	  	  HAL_Delay(250);
-//	  	  ledOrange(TOGGLE);
-//	  	  HAL_Delay(250);
-//	  	  ledRed(TOGGLE);
-//	  	  HAL_Delay(250);
 
 
   }
@@ -607,6 +599,55 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+
+
+
+static void pwmSetDuty(enum ePwmChannel channel, float duty)
+{
+	if (duty > 1.0f)
+	{
+		SPAM(("%s wrong duty!", __func__ ));
+		return;
+	}
+
+	switch (channel)
+	{
+	case PWM_CHANNEL_UK:
+		TIM1->CCR1 = (uint32_t)(65535.0 * duty);
+		break;
+	case PWM_CHANNEL_UE:
+		TIM1->CCR2 = (uint32_t)(65535.0 * duty);
+		break;
+	case PWM_CHANNEL_UF:
+		TIM1->CCR3 = (uint32_t)(65535.0 * duty);
+		break;
+	case PWM_CHANNEL_PUMP:
+		TIM1->CCR4 = (uint32_t)(65535.0 * duty);
+		break;
+	}
+
+}
+
+
+static void init(void)
+{
+	pwmSetDuty(PWM_CHANNEL_UK, (1.0/3.3));
+	pwmSetDuty(PWM_CHANNEL_UE, (1.4142135/3.3));
+	pwmSetDuty(PWM_CHANNEL_UF, (2.71/3.3));
+	pwmSetDuty(PWM_CHANNEL_PUMP, (3.1415/3.3));
+
+//	HAL_TIM_PWMN_Start(&htim1, TIM_CHANNEL_1);
+	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);
+	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
+	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
+	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
+
+}
+
+
+
+
 
 /* USER CODE END 4 */
 

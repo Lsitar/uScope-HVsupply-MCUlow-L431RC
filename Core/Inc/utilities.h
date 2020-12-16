@@ -19,6 +19,14 @@ enum eState
 	TOGGLE,
 };
 
+enum ePwmChannel
+{
+	PWM_CHANNEL_UK,
+	PWM_CHANNEL_UE,
+	PWM_CHANNEL_UF,
+	PWM_CHANNEL_PUMP,
+};
+
 
 /*** Exported inline snippets *************************************************/
 
