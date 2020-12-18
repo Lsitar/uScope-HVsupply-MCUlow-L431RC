@@ -22,6 +22,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "hd44780_i2c_DMA.h"
 #include "utilities.h"
 /* USER CODE END Includes */
 
@@ -642,6 +643,8 @@ static void init(void)
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
+
+	HD44780_Init(20, 4);
 
 }
 
