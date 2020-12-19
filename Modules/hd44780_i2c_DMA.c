@@ -118,15 +118,15 @@ enum ePin
 static void dma_init(void)
 {
 	/* wait for previous transmission to end */
-	uint32_t previousTick = System.timer.tick;
+	uint32_t previousTick = HAL_GetTick();	//System.timer.tick;
 	while(HD44780_DMAdata.busy)
 	{
-		if ((System.timer.tick - previousTick) > 50)
+		if ((HAL_GetTick() /*System.timer.tick*/ - previousTick) > 50)
 		{	/* reset peripherals */
 			I2C_Cmd(I2C1, DISABLE);							/* PE bit in CR1 */
-			I2C_DMACmd(I2C1, I2C_DMAReq_Tx, DISABLE);
-			DMA_Cmd(DMA1_Channel6, DISABLE);
-			I2C_DMACmd(I2C1, I2C_DMAReq_Tx, ENABLE);
+			I2C1->CR1 &= (uint32_t)~I2C_CR1_TXDMAEN; // I2C_DMACmd(I2C1, I2C_DMAReq_Tx, DISABLE);
+			HD44780_DMA_cmd(DISABLE);
+			I2C1->CR1 |= I2C_CR1_TXDMAEN; // I2C_DMACmd(I2C1, I2C_DMAReq_Tx, ENABLE);
 			I2C_Cmd(I2C1, ENABLE);							/* PE bit in CR1 */
 			SPAM(("HD44780 driver crash\n"));
 			break;

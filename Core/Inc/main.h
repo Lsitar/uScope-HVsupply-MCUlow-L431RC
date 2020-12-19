@@ -112,6 +112,26 @@ void Error_Handler(void);
 #define LED_RED_GPIO_Port GPIOC
 /* USER CODE BEGIN Private defines */
 
+// export handles
+extern ADC_HandleTypeDef hadc1;
+extern I2C_HandleTypeDef hi2c1;
+extern SPI_HandleTypeDef hspi1;
+extern SPI_HandleTypeDef hspi2;
+extern TIM_HandleTypeDef htim1;
+extern UART_HandleTypeDef huart1;
+
+// export names
+enum ePwmChannel
+{
+	PWM_CHANNEL_UK,
+	PWM_CHANNEL_UE,
+	PWM_CHANNEL_UF,
+	PWM_CHANNEL_PUMP,
+};
+
+
+
+
 struct sSystem
 {
 	float fAnodeCurrent;

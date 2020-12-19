@@ -19,15 +19,6 @@ enum eState
 	TOGGLE,
 };
 
-enum ePwmChannel
-{
-	PWM_CHANNEL_UK,
-	PWM_CHANNEL_UE,
-	PWM_CHANNEL_UF,
-	PWM_CHANNEL_PUMP,
-};
-
-
 /*** Exported inline snippets *************************************************/
 
 static inline void HAL_GPIO_WritePinLow(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin)
@@ -91,11 +82,38 @@ static inline void ledRed(enum eState state)
 		HAL_GPIO_TogglePin(LED_RED_GPIO_Port, LED_RED_Pin);
 }
 
+static inline void pwmSetDuty(enum ePwmChannel channel, float duty)
+{
+	if (duty > 1.0f)
+	{
+		SPAM(("%s wrong duty!", __func__ ));
+		return;
+	}
+
+	switch (channel)
+	{
+	case PWM_CHANNEL_UK:
+		TIM1->CCR1 = (uint32_t)(65535.0 * duty);
+		break;
+	case PWM_CHANNEL_UE:
+		TIM1->CCR2 = (uint32_t)(65535.0 * duty);
+		break;
+	case PWM_CHANNEL_UF:
+		TIM1->CCR3 = (uint32_t)(65535.0 * duty);
+		break;
+	case PWM_CHANNEL_PUMP:
+		TIM1->CCR4 = (uint32_t)(65535.0 * duty);
+		break;
+	}
+}
+
 /*** Exported functions *******************************************************/
 
 void ledDemo(void);
+void ledError(uint32_t);
 void readKeyboard(void);
+void delay_us(uint32_t us);
+void delay_ms(uint32_t ms);
 
 
-
-/**************** END OF FILE *************************************************/
+/************************ (C) COPYRIGHT LSITA ******************END OF FILE****/

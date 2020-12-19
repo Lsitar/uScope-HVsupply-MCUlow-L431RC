@@ -16,3 +16,18 @@ void HD44780_delay_us(unsigned int us)
 {
 	;
 }
+
+/*
+ * Control of enable / disable of DMA
+ */
+void HD44780_DMA_cmd(FunctionalState state)
+{
+//	DMA_Cmd(DMA_Channel_TypeDef* DMAy_Channelx, state );
+	DMA_Cmd(DMA1_Channel6, state );
+}
+
+
+
+
+
+/*********************************END OF FILE**********************************/

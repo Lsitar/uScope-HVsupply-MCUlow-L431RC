@@ -28,12 +28,19 @@ extern "C" {
 
 
 //#include "init.h"	/* for DMA init function */
-//#include "i2c.h"	/* for I2C functions */
+#include "i2c.h"	/* for I2C functions */
+
+/* Exported types ------------------------------------------------------------*/
+
+
 
 /* Exported functions prototypes ---------------------------------------------*/
 
 void HD44780_delay_ms(unsigned int ms);
 void HD44780_delay_us(unsigned int us);
+
+void HD44780_DMA_cmd(FunctionalState);
+void init_DMA1_Ch6(void);
 
 
 #ifdef __cplusplus

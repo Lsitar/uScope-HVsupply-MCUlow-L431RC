@@ -22,7 +22,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "hd44780_i2c_DMA.h"
+#include "hd44780_i2c.h"
+#include "init.h"
 #include "utilities.h"
 /* USER CODE END Includes */
 
@@ -130,8 +131,7 @@ int main(void)
   MX_USART1_UART_Init();
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
-  powerLockOn();
-  init();
+  init_user();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -144,7 +144,21 @@ int main(void)
 
 	  readKeyboard();
 	  ledDemo();
+//	  HD44780_Puts(0, 0, "Hello world");
+//	  HAL_Delay(500);
+//	  HD44780_Clear();
+//	  HD44780_Puts(1, 1, "Hello world");
+//	  HAL_Delay(500);
+//	  HD44780_Clear();
+//	  HD44780_Puts(2, 2, "Hello world");
+//	  HAL_Delay(500);
+//	  HD44780_Clear();
+//	  HD44780_Puts(3, 3, "Hello world");
+//	  HAL_Delay(500);
+//	  HD44780_Clear();
 
+	  HD44780_demo();
+	  HAL_Delay(50);
 
   }
   /* USER CODE END 3 */
@@ -604,49 +618,34 @@ static void MX_GPIO_Init(void)
 
 
 
-static void pwmSetDuty(enum ePwmChannel channel, float duty)
-{
-	if (duty > 1.0f)
-	{
-		SPAM(("%s wrong duty!", __func__ ));
-		return;
-	}
-
-	switch (channel)
-	{
-	case PWM_CHANNEL_UK:
-		TIM1->CCR1 = (uint32_t)(65535.0 * duty);
-		break;
-	case PWM_CHANNEL_UE:
-		TIM1->CCR2 = (uint32_t)(65535.0 * duty);
-		break;
-	case PWM_CHANNEL_UF:
-		TIM1->CCR3 = (uint32_t)(65535.0 * duty);
-		break;
-	case PWM_CHANNEL_PUMP:
-		TIM1->CCR4 = (uint32_t)(65535.0 * duty);
-		break;
-	}
-
-}
 
 
-static void init(void)
-{
-	pwmSetDuty(PWM_CHANNEL_UK, (1.0/3.3));
-	pwmSetDuty(PWM_CHANNEL_UE, (1.4142135/3.3));
-	pwmSetDuty(PWM_CHANNEL_UF, (2.71/3.3));
-	pwmSetDuty(PWM_CHANNEL_PUMP, (3.1415/3.3));
 
-//	HAL_TIM_PWMN_Start(&htim1, TIM_CHANNEL_1);
-	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);
-	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
-	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
-	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
-
-	HD44780_Init(20, 4);
-
-}
+//static void init(void)
+//{
+//	powerLockOn();
+//
+//	pwmSetDuty(PWM_CHANNEL_UK, (1.0/3.3));
+//	pwmSetDuty(PWM_CHANNEL_UE, (1.4142135/3.3));
+//	pwmSetDuty(PWM_CHANNEL_UF, (2.71/3.3));
+//	pwmSetDuty(PWM_CHANNEL_PUMP, (3.1415/3.3));
+//
+//	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);
+//	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
+//	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
+//	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
+//
+//	HAL_StatusTypeDef i2cStatus = HAL_I2C_IsDeviceReady(&hi2c1, 0x4E, 3, 100);
+//
+//	if (i2cStatus == HAL_OK)
+//	{
+//		SPAM(("I2C_ready\n"));
+//		HD44780_Init(20, 4);
+//	}
+//	else
+//		SPAM(("I2C_error\n"));
+//
+//}
 
 
 
