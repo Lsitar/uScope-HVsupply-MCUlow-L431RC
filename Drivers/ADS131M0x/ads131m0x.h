@@ -51,7 +51,7 @@
 //
 //****************************************************************************
 
-#define CHANNEL_COUNT (4)   // ADS131M04 -> 4 Channels
+#define CHANNEL_COUNT (6)   // ADS131M04 -> 4 Channels
 
 #if ((CHANNEL_COUNT < 1) || (CHANNEL_COUNT > 8))
     #error Invalid channel count configured in 'ads131m0x.h'.
@@ -128,14 +128,12 @@
 
 #define OPCODE_NULL                             ((uint16_t) 0x0000)
 #define OPCODE_RESET                            ((uint16_t) 0x0011)
-#define OPCODE_RREG                             ((uint16_t) 0xA000)
-#define OPCODE_WREG                             ((uint16_t) 0x6000)
 #define OPCODE_STANDBY                          ((uint16_t) 0x0022)
 #define OPCODE_WAKEUP                           ((uint16_t) 0x0033)
 #define OPCODE_LOCK                             ((uint16_t) 0x0555)
 #define OPCODE_UNLOCK                           ((uint16_t) 0x0655)
-
-
+#define OPCODE_RREG                             ((uint16_t) 0xA000)
+#define OPCODE_WREG                             ((uint16_t) 0x6000)
 
 //****************************************************************************
 //
@@ -458,6 +456,10 @@
     #define CLOCK_CH0_EN_MASK                                               ((uint16_t) 0x0100)
     #define CLOCK_CH0_EN_DISABLED                                           ((uint16_t) 0x0000 << 8)
     #define CLOCK_CH0_EN_ENABLED                                            ((uint16_t) 0x0001 << 8)    // DEFAULT
+
+    #define CLOCK_XTAL_DIS_MASK                                             ((uint16_t) 0x0080)
+    #define CLOCK_XTAL_DIS_DISABLED                                         ((uint16_t) 0x0000 << 7)
+    #define CLOCK_XTAL_DIS_ENABLED                                          ((uint16_t) 0x0001 << 7)    // DEFAULT
 
     /* RESERVED1 field mask */
     #define CLOCK_RESERVED_MASK                                             ((uint16_t) 0x00E0)
@@ -1592,6 +1594,7 @@
 
 typedef struct
 {
+	bool ready;
     uint16_t response;
     uint16_t crc;
     int32_t channel0;
@@ -1617,70 +1620,60 @@ typedef struct
  #if (CHANNEL_COUNT > 7)
     int32_t channel7;
 #endif
-} adc_channel_data;
+} adsChannelData_t;
 
 
 
-//****************************************************************************
+//******************************************************************************
 //
 // Function prototypes
 //
-//****************************************************************************
+//******************************************************************************
 
-void        adcStartup(void);
-uint16_t    sendCommand(uint16_t op_code);
-bool        readData(adc_channel_data *DataStruct);
-uint16_t    readSingleRegister(uint8_t address);
-void        writeSingleRegister(uint8_t address, uint16_t data);
-bool        lockRegisters(void);
-bool        unlockRegisters(void);
-void        resetDevice(void);
-void        restoreRegisterDefaults(void);
+void        adsStartup(void);
+uint16_t    adsSendCommand(uint16_t op_code);
+bool        adsReadData(adsChannelData_t *DataStruct);
+uint16_t    adsReadSingleRegister(uint8_t address);
+void        adsWriteSingleRegister(uint8_t address, uint16_t data);
+bool        adsLockRegisters(void);
+bool        adsUnlockRegisters(void);
+void        adsResetSoft(void);
 uint16_t    calculateCRC(const uint8_t dataBytes[], uint8_t numberBytes, uint16_t initialValue);
+uint16_t    registerMapGetValue(uint8_t address);
+void        registerMapRestoreDefaults(void);
 
-// Getter functions
-uint16_t    getRegisterValue(uint8_t address);
-
-// Helper functions
-uint8_t     upperByte(uint16_t uint16_Word);
-uint8_t     lowerByte(uint16_t uint16_Word);
-uint16_t    combineBytes(uint8_t upperByte, uint8_t lowerByte);
-int32_t     signExtend(const uint8_t dataBytes[]);
-
-
-
-//****************************************************************************
+//******************************************************************************
 //
 // Register macros
 //
-//****************************************************************************
+//******************************************************************************
 
 /** Returns Number of Channels */
-#define CHANCNT             ((uint8_t) ((getRegisterValue(ID_ADDRESS) & ID_CHANCNT_MASK) >> 8))
+//#define CHANCNT             ((uint8_t) ((registerMapGetValue(ID_ADDRESS) & ID_CHANCNT_MASK) >> 8))
 
 /** Revision ID bits */
-#define REVISION_ID         ((uint8_t) ((getRegisterValue(ID_ADDRESS) & ID_REVID_MASK) >> 0))
+//#define REVISION_ID         ((uint8_t) ((registerMapGetValue(ID_ADDRESS) & ID_REVID_MASK) >> 0))
 
 /** Returns true if SPI interface is locked */
-#define SPI_LOCKED          ((bool) (getRegisterValue(STATUS_ADDRESS) & STATUS_LOCK_LOCKED))
+#define SPI_LOCKED          ((bool) (registerMapGetValue(STATUS_ADDRESS) & STATUS_LOCK_LOCKED))
 
 /** Returns SPI Communication Word Format*/
-#define WLENGTH             ((uint8_t) ((getRegisterValue(MODE_ADDRESS) & STATUS_WLENGTH_MASK) >> 8))
+#define WLENGTH             ((uint8_t) ((registerMapGetValue(MODE_ADDRESS) & STATUS_WLENGTH_MASK) >> 8))
 
 /** Returns true if Register Map CRC byte enable bit is set */
-#define REGMAP_CRC_ENABLED  ((bool) (getRegisterValue(MODE_ADDRESS) & MODE_REG_CRC_EN_ENABLED))
+//#define REGMAP_CRC_ENABLED  ((bool) (registerMapGetValue(MODE_ADDRESS) & MODE_REG_CRC_EN_ENABLED))
 
 /** Returns true if SPI CRC byte enable bit is set */
-#define SPI_CRC_ENABLED     ((bool) (getRegisterValue(MODE_ADDRESS) & MODE_RX_CRC_EN_ENABLED))
+#define SPI_CRC_ENABLED     ((bool) (registerMapGetValue(MODE_ADDRESS) & MODE_RX_CRC_EN_ENABLED))
 
 /** Returns false for CCITT and true for ANSI CRC type */
-#define SPI_CRC_TYPE        ((bool) (getRegisterValue(MODE_ADDRESS) & MODE_CRC_TYPE_MASK))
+//#define SPI_CRC_TYPE        ((bool) (registerMapGetValue(MODE_ADDRESS) & MODE_CRC_TYPE_MASK))
 
 /** Data rate register field setting */
-#define OSR_INDEX           ((uint8_t) ((getRegisterValue(CLOCK_ADDRESS) & CLOCK_OSR_MASK) >> 2))
+//#define OSR_INDEX           ((uint8_t) ((registerMapGetValue(CLOCK_ADDRESS) & CLOCK_OSR_MASK) >> 2))
 
 /** Data rate register field setting */
-#define POWER_MODE          ((uint8_t) ((getRegisterValue(CLOCK_ADDRESS) & CLOCK_PWR_MASK) >> 0))
+//#define POWER_MODE          ((uint8_t) ((registerMapGetValue(CLOCK_ADDRESS) & CLOCK_PWR_MASK) >> 0))
 
 
 

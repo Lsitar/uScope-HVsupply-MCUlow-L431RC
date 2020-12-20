@@ -74,6 +74,8 @@ void init_user( void )
 		while (0xDEAD);
 	}
 
+	InitADC();
+
 
 //	init_adc12();
 

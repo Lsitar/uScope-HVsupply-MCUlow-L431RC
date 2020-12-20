@@ -19,6 +19,14 @@ enum eState
 	TOGGLE,
 };
 
+enum ePwmChannel
+{
+	PWM_CHANNEL_UK,
+	PWM_CHANNEL_UE,
+	PWM_CHANNEL_UF,
+	PWM_CHANNEL_PUMP,
+};
+
 /*** Exported inline snippets *************************************************/
 
 static inline void HAL_GPIO_WritePinLow(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin)
@@ -105,6 +113,12 @@ static inline void pwmSetDuty(enum ePwmChannel channel, float duty)
 		TIM1->CCR4 = (uint32_t)(65535.0 * duty);
 		break;
 	}
+}
+
+static inline void testpin1(bool state)
+{
+	if (state);
+//		HAL_GPIO_WritePinHigh(GPIOx, GPIO_Pin);
 }
 
 /*** Exported functions *******************************************************/

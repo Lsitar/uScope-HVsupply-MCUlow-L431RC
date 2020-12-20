@@ -22,6 +22,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "typedefs.h"
 #include "hd44780_i2c.h"
 #include "init.h"
 #include "utilities.h"
@@ -88,7 +89,7 @@ static void MX_TIM1_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_ADC1_Init(void);
 /* USER CODE BEGIN PFP */
-static void init(void);
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -104,6 +105,7 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 	uint32_t cnt = 0;
+	UNUSED(cnt);
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -143,7 +145,7 @@ int main(void)
     /* USER CODE BEGIN 3 */
 
 	  readKeyboard();
-	  ledDemo();
+	  //ledDemo();
 //	  HD44780_Puts(0, 0, "Hello world");
 //	  HAL_Delay(500);
 //	  HD44780_Clear();
@@ -157,7 +159,13 @@ int main(void)
 //	  HAL_Delay(500);
 //	  HD44780_Clear();
 
-	  HD44780_demo();
+	  char LCD_buff[20];
+	  snprintf_(LCD_buff, 20, "%i", System.adcData.channel0);
+	  HD44780_Puts(0, 0, LCD_buff);
+	  snprintf_(LCD_buff, 20, "%i", System.adcData.channel1);
+	  HD44780_Puts(0, 1, LCD_buff);
+
+//	  HD44780_demo();
 	  HAL_Delay(50);
 
   }
@@ -353,7 +361,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_2EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -391,7 +399,7 @@ static void MX_SPI2_Init(void)
   hspi2.Init.Direction = SPI_DIRECTION_2LINES;
   hspi2.Init.DataSize = SPI_DATASIZE_8BIT;
   hspi2.Init.NSS = SPI_NSS_HARD_OUTPUT;
-  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
   hspi2.Init.TIMode = SPI_TIMODE_ENABLE;
   hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
   hspi2.Init.CRCPolynomial = 7;
@@ -567,7 +575,7 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin : ADC_DRDY_EXTI4_Pin */
   GPIO_InitStruct.Pin = ADC_DRDY_EXTI4_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(ADC_DRDY_EXTI4_GPIO_Port, &GPIO_InitStruct);
 
@@ -610,6 +618,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.Alternate = GPIO_AF0_MCO;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI4_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI4_IRQn);
 
 }
 

@@ -32,14 +32,15 @@
  */
 
 #include "ads131m0x.h"
+#include "stm32l4xx_hal.h"
+#include "utilities.h"	// delay ms us
 
 
-
-//****************************************************************************
+//******************************************************************************
 //
 // Internal variables
 //
-//****************************************************************************
+//******************************************************************************
 
 // Array used to recall device register map configurations */
 static uint16_t             registerMap[NUM_REGISTERS];
@@ -49,15 +50,19 @@ const static uint8_t        wlength_byte_values[] = {2, 3, 4, 4};
 
 
 
-//****************************************************************************
+//******************************************************************************
 //
 // Internal function prototypes
 //
-//****************************************************************************
+//******************************************************************************
 
-uint8_t     buildSPIarray(const uint16_t opcodeArray[], uint8_t numberOpcodes, uint8_t byteArray[]);
-uint16_t    enforce_selected_device_modes(uint16_t data);
-uint8_t     getWordByteLength(void);
+static uint8_t upperByte (uint16_t );
+static uint8_t lowerByte (uint16_t );
+static uint16_t combineBytes (uint8_t , uint8_t );
+static int32_t signExtend (const uint8_t*);
+static uint8_t buildSPIarray(const uint16_t*, uint8_t, uint8_t*);
+static uint16_t enforce_selected_device_modes(uint16_t data);
+static uint8_t getWordByteLength(void);
 
 
 
@@ -65,19 +70,17 @@ uint8_t     getWordByteLength(void);
 //
 //! Getter function to access registerMap array from outside of this module.
 //!
-//! \fn uint16_t getRegisterValue(uint8_t address)
-//!
 //! NOTE: The internal registerMap arrays stores the last know register value,
 //! since the last read or write operation to that register. This function
 //! does not communicate with the device to retrieve the current register value.
 //! For the most up-to-date register data or retrieving the value of a hardware
-//! controlled register, it is recommend to use readSingleRegister() to read the
+//! controlled register, it is recommend to use adsReadSingleRegister() to read the
 //! current register value.
 //!
 //! \return unsigned 16-bit register value.
 //
 //*****************************************************************************
-uint16_t getRegisterValue(uint8_t address)
+uint16_t registerMapGetValue(uint8_t address)
 {
     assert(address < NUM_REGISTERS);
     return registerMap[address];
@@ -89,41 +92,61 @@ uint16_t getRegisterValue(uint8_t address)
 //
 //! Example start up sequence for the ADS131M0x.
 //!
-//! \fn void adcStartup(void)
-//!
 //! Before calling this function, the device must be powered,
 //! the SPI/GPIO pins of the MCU must have already been configured,
 //! and (if applicable) the external clock source should be provided to CLKIN.
-//!
-//! \return None.
 //
 //*****************************************************************************
-void adcStartup(void)
+void adsStartup(void)
 {
-	/* (OPTIONAL) Provide additional delay time for power supply settling */
-	delay_ms(50);
+	uint16_t response;
+	uint8_t uChannelsNum;
 
-	/* (REQUIRED) Set nRESET pin high for ADC operation */
-	setSYNC_RESET(HIGH);
+//	// Proper reset. Time threshold: 2048 CLKIN / 8 MHz = 256 us
+//	setSYNC_RESET(LOW);
+//	delay_us(500);
+//	setSYNC_RESET(HIGH);
+//	delay_us(10);	// wait tREGACQ after reset to access registers
+	adsResetHard();
 
-	/* (OPTIONAL) Toggle nRESET pin to ensure default register settings. */
-	/* NOTE: This also ensures that the device registers are unlocked.	 */
-	toggleRESET();
+//    // Initialize internal 'registerMap' array with device default settings
+//	registerMapRestoreDefaults();
+	// Default: 24-bit word size. Words are always MSB aligned.
 
-    /* (REQUIRED) Initialize internal 'registerMap' array with device default settings */
-	restoreRegisterDefaults();
+//	/* (OPTIONAL) Validate first response word when beginning SPI communication.
+//	 * Reset is confirmed by response: (0xFF20 | CHANCNT)  */
+//	response = adsSendCommand(OPCODE_NULL);
+//	if ((response & 0xFF20) != 0xFF20)
+//	{
+//		SPAM(("ADC ERROR after reset!\n"));
+//		ledError(4);
+//		powerLockOff();
+//		while (0xDEAD);
+//	}
+//	else
+//		SPAM(("ADC reset success\n"));
 
-    /* (OPTIONAL) Validate first response word when beginning SPI communication: (0xFF20 | CHANCNT) */
-	uint16_t response = sendCommand(OPCODE_NULL);
+	adsReadSingleRegister(ID_ADDRESS);
+	uChannelsNum = (uint8_t)((registerMap[ID_ADDRESS] >> 8) & 0x0F);
+
+	// check STATUS register - default value: 0x0500h
+	response = adsSendCommand(OPCODE_NULL);
+	SPAM(("ADC status register: 0x%X, channels: %u\n", response, uChannelsNum));
+	UNUSED(response);
 
 	/* (OPTIONAL) Define your initial register settings here */
-    writeSingleRegister(CLOCK_ADDRESS, (CLOCK_DEFAULT & ~CLOCK_OSR_MASK) | CLOCK_OSR_256);
+//    adsWriteSingleRegister(CLOCK_ADDRESS, (CLOCK_DEFAULT & ~CLOCK_OSR_MASK) | CLOCK_OSR_256);
+	// disable unused channels, set OSR
+	uint16_t reg = CLOCK_CH0_EN_ENABLED + CLOCK_CH1_EN_ENABLED + CLOCK_XTAL_DIS_ENABLED + CLOCK_OSR_16384 + CLOCK_PWR_HR;
+	adsWriteSingleRegister(CLOCK_ADDRESS, reg);
+
+
 
     /* (REQUIRED) Configure MODE register settings
      * NOTE: This function call is required here for this particular code implementation to work.
      * This function will enforce the MODE register settings as selected in the 'ads131m0x.h' header file.
      */
-    writeSingleRegister(MODE_ADDRESS, MODE_DEFAULT);
+//    adsWriteSingleRegister(MODE_ADDRESS, MODE_DEFAULT);
 
     /* (OPTIONAL) Read back all registers */
 
@@ -136,14 +159,14 @@ void adcStartup(void)
 //
 //! Reads the contents of a single register at the specified address.
 //!
-//! \fn uint16_t readSingleRegister(uint8_t address)
+//! \fn uint16_t adsReadSingleRegister(uint8_t address)
 //!
 //! \param address is the 8-bit address of the register to read.
 //!
 //! \return Returns the 8-bit register read result.
 //
 //*****************************************************************************
-uint16_t readSingleRegister(uint8_t address)
+uint16_t adsReadSingleRegister(uint8_t address)
 {
 	/* Check that the register address is in range */
 	assert(address < NUM_REGISTERS);
@@ -163,7 +186,7 @@ uint16_t readSingleRegister(uint8_t address)
 	spiSendReceiveArrays(dataTx, dataRx, numberOfBytes);
 
 	// [FRAME 2] Send NULL command to retrieve the register data
-	registerMap[address] = sendCommand(OPCODE_NULL);
+	registerMap[address] = adsSendCommand(OPCODE_NULL);
 
 	return registerMap[address];
 }
@@ -174,7 +197,7 @@ uint16_t readSingleRegister(uint8_t address)
 //
 //! Writes data to a single register.
 //!
-//! \fn void writeSingleRegister(uint8_t address, uint16_t data)
+//! \fn void adsWriteSingleRegister(uint8_t address, uint16_t data)
 //!
 //! \param address is the address of the register to write to.
 //! \param data is the value to write.
@@ -184,7 +207,7 @@ uint16_t readSingleRegister(uint8_t address)
 //! \return None.
 //
 //*****************************************************************************
-void writeSingleRegister(uint8_t address, uint16_t data)
+void adsWriteSingleRegister(uint8_t address, uint16_t data)
 {
     /* Check that the register address is in range */
     assert(address < NUM_REGISTERS);
@@ -216,7 +239,7 @@ void writeSingleRegister(uint8_t address, uint16_t data)
     registerMap[address] = data;
 
     // (RECOMMENDED) Read back register to confirm register write was successful
-    readSingleRegister(address);
+    adsReadSingleRegister(address);
 
     // NOTE: Enabling the CRC words in the SPI command will NOT prevent an invalid W
 }
@@ -227,16 +250,14 @@ void writeSingleRegister(uint8_t address, uint16_t data)
 //
 //! Reads ADC data.
 //!
-//! \fn bool readData(adc_channel_data *DataStruct)
-//!
-//! \param *DataStruct points to an adc_channel_data type-defined structure/
+//! @param *DataStruct points to an adsChannelData_t type-defined structure
 //!
 //! NOTE: Should be called after /DRDY goes low, and not during a /DRDY falling edge!
 //!
-//! \return Returns true if the CRC-OUT of the data read detects an error.
+//! @return Returns true if the CRC-OUT of the data read detects an error.
 //
 //*****************************************************************************
-bool readData(adc_channel_data *DataStruct)
+bool adsReadData(adsChannelData_t *DataStruct)
 {
     int i;
     uint8_t crcTx[4]                        = { 0 };
@@ -251,7 +272,7 @@ bool readData(adc_channel_data *DataStruct)
 #endif
 
     /* Set the nCS pin LOW */
-    setCS(LOW);
+    adsSetCS(LOW);
 
     // Send NULL word, receive response word
     for (i = 0; i < bytesPerWord; i++)
@@ -366,7 +387,7 @@ bool readData(adc_channel_data *DataStruct)
     //crcWord = calculateCRC(&dataRx[0], bytesPerWord, crcWord);
 
     /* Set the nCS pin HIGH */
-    setCS(HIGH);
+    adsSetCS(HIGH);
 
     // Returns true when a CRC error occurs
     return ((bool) crcWord);
@@ -378,7 +399,7 @@ bool readData(adc_channel_data *DataStruct)
 //
 //! Sends the specified SPI command to the ADC (NULL, STANDBY, or WAKEUP).
 //!
-//! \fn uint16_t sendCommand(uint16_t opcode)
+//! \fn uint16_t adsSendCommand(uint16_t opcode)
 //!
 //! \param opcode SPI command byte.
 //!
@@ -388,14 +409,14 @@ bool readData(adc_channel_data *DataStruct)
 //! \return ADC response byte (typically the STATUS byte).
 //
 //*****************************************************************************
-uint16_t sendCommand(uint16_t opcode)
+uint16_t adsSendCommand(uint16_t opcode)
 {
     /* Assert if this function is used to send any of the following opcodes */
-    assert(OPCODE_RREG != opcode);      /* Use "readSingleRegister()"   */
-    assert(OPCODE_WREG != opcode);      /* Use "writeSingleRegister()"  */
+    assert(OPCODE_RREG != opcode);      /* Use "adsReadSingleRegister()"   */
+    assert(OPCODE_WREG != opcode);      /* Use "adsWriteSingleRegister()"  */
     assert(OPCODE_LOCK != opcode);      /* Use "lockRegisters()"        */
-    assert(OPCODE_UNLOCK != opcode);    /* Use "unlockRegisters()"      */
-    assert(OPCODE_RESET != opcode);     /* Use "resetDevice()"          */
+    assert(OPCODE_UNLOCK != opcode);    /* Use "adsUnlockRegisters()"      */
+    assert(OPCODE_RESET != opcode);     /* Use "adsResetSoft()"          */
 
     // Build TX and RX byte array
 #ifdef ENABLE_CRC_IN
@@ -408,7 +429,7 @@ uint16_t sendCommand(uint16_t opcode)
     uint8_t numberOfBytes = buildSPIarray(&opcode, 1, dataTx);
 
     /* Set the nCS pin LOW */
-    setCS(LOW);
+    adsSetCS(LOW);
 
     // Send the opcode (and crc word, if enabled)
     int i;
@@ -418,7 +439,7 @@ uint16_t sendCommand(uint16_t opcode)
     }
 
     /* Set the nCS pin HIGH */
-    setCS(HIGH);
+    adsSetCS(HIGH);
 
     // Combine response bytes and return as a 16-bit word
     uint16_t adcResponse = combineBytes(dataRx[0], dataRx[1]);
@@ -431,7 +452,7 @@ uint16_t sendCommand(uint16_t opcode)
 //
 //! Resets the device.
 //!
-//! \fn void resetDevice(void)
+//! \fn void adsResetSoft(void)
 //!
 //! NOTE: This function does not capture DOUT data, but it could be modified
 //! to do so.
@@ -439,7 +460,7 @@ uint16_t sendCommand(uint16_t opcode)
 //! \return None.
 //
 //*****************************************************************************
-void resetDevice(void)
+void adsResetSoft(void)
 {
     // Build TX and RX byte array
 #ifdef ENABLE_CRC_IN
@@ -456,7 +477,7 @@ void resetDevice(void)
     uint8_t wordsInFrame    = CHANNEL_COUNT + 2;
 
     // Set the nCS pin LOW
-    setCS(LOW);
+    adsSetCS(LOW);
 
     // Send the opcode (and CRC word, if enabled)
     int i;
@@ -476,29 +497,25 @@ void resetDevice(void)
     // did not receive a full SPI frame and the reset did not occur!
 
     // Set the nCS pin HIGH
-    setCS(HIGH);
+    adsSetCS(HIGH);
 
     // tSRLRST delay, ~1ms with 2.048 MHz fCLK
     delay_ms(1);
 
     // Update register setting array to keep software in sync with device
-    restoreRegisterDefaults();
+    registerMapRestoreDefaults();
 
     // Write to MODE register to enforce mode settings
-    writeSingleRegister(MODE_ADDRESS, MODE_DEFAULT);
+    adsWriteSingleRegister(MODE_ADDRESS, MODE_DEFAULT);
 }
 
 
 
-//*****************************************************************************
-//
-//! Sends the LOCK command and verifies that registers are locked.
-//!
-//! \fn bool lockRegisters(void)
-//!
-//! \return boolean to indicate if an error occurred (0 = no error; 1 = error)
-//
-//*****************************************************************************
+/*
+ * Sends the LOCK command and verifies that registers are locked.
+ *
+ * @return boolean to indicate if an error occurred (0 = no error; 1 = error)
+ */
 bool lockRegisters(void)
 {
     bool b_lock_error;
@@ -520,7 +537,7 @@ bool lockRegisters(void)
     /* (OPTIONAL) Check for SPI errors by sending the NULL command and checking STATUS */
 
     /* (OPTIONAL) Read back the STATUS register and check if LOCK bit is set... */
-    readSingleRegister(STATUS_ADDRESS);
+    adsReadSingleRegister(STATUS_ADDRESS);
     if (!SPI_LOCKED) { b_lock_error = true; }
 
     /* If the STATUS register is NOT read back,
@@ -542,12 +559,12 @@ bool lockRegisters(void)
 //
 //! Sends the UNLOCK command and verifies that registers are unlocked
 //!
-//! \fn bool unlockRegisters(void)
+//! \fn bool adsUnlockRegisters(void)
 //!
 //! \return boolean to indicate if an error occurred (0 = no error; 1 = error)
 //
 //*****************************************************************************
-bool unlockRegisters(void)
+bool adsUnlockRegisters(void)
 {
 	bool b_unlock_error;
 
@@ -568,7 +585,7 @@ bool unlockRegisters(void)
     /* (OPTIONAL) Check for SPI errors by sending the NULL command and checking STATUS */
 
     /* (OPTIONAL) Read the STATUS register and check if LOCK bit is cleared... */
-    readSingleRegister(STATUS_ADDRESS);
+    adsReadSingleRegister(STATUS_ADDRESS);
     if (SPI_LOCKED) { b_unlock_error = true; }
 
     /* If the STATUS register is NOT read back,
@@ -610,7 +627,7 @@ uint16_t calculateCRC(const uint8_t dataBytes[], uint8_t numberBytes, uint16_t i
 	bool        dataMSb;						/* Most significant bit of data byte */
 	bool        crcMSb;						    /* Most significant bit of crc byte  */
 	uint8_t     bytesPerWord = wlength_byte_values[WLENGTH];
-
+	UNUSED(bytesPerWord);
 	/*
      * Initial value of crc register
      * NOTE: The ADS131M0x defaults to 0xFFFF,
@@ -663,11 +680,9 @@ uint16_t calculateCRC(const uint8_t dataBytes[], uint8_t numberBytes, uint16_t i
 
 
 
-//*****************************************************************************
+//******************************************************************************
 //
 //! Updates the registerMap[] array to its default values.
-//!
-//! \fn void restoreRegisterDefaults(void)
 //!
 //! NOTES:
 //! - If the MCU keeps a copy of the ADS131M0x register settings in memory,
@@ -685,8 +700,8 @@ uint16_t calculateCRC(const uint8_t dataBytes[], uint8_t numberBytes, uint16_t i
 //!
 //! \return None.
 //
-//*****************************************************************************
-void restoreRegisterDefaults(void)
+//******************************************************************************
+void registerMapRestoreDefaults(void)
 {
     registerMap[ID_ADDRESS]             =   0x00;               /* NOTE: This a read-only register */
     registerMap[STATUS_ADDRESS]         =   STATUS_DEFAULT;
@@ -756,89 +771,50 @@ void restoreRegisterDefaults(void)
 
 
 
-//****************************************************************************
+//******************************************************************************
 //
-// Helper functions
+// Internal functions / Helper functions
 //
-//****************************************************************************
+//******************************************************************************
 
-
-//*****************************************************************************
-//
-//! Takes a 16-bit word and returns the most-significant byte.
-//!
-//! \fn uint8_t upperByte(uint16_t uint16_Word)
-//!
-//! \param temp_word is the original 16-bit word.
-//!
-//! \return 8-bit most-significant byte.
-//
-//*****************************************************************************
-uint8_t upperByte(uint16_t uint16_Word)
+/*******************************************************************************
+ * Takes a 16-bit word and returns the 8-bit most-significant byte.
+ */
+static uint8_t upperByte (uint16_t uint16_Word)
 {
-    uint8_t msByte;
-    msByte = (uint8_t) ((uint16_Word >> 8) & 0x00FF);
-
-    return msByte;
+    return (uint8_t) ((uint16_Word >> 8) & 0x00FF);
 }
 
 
 
-//*****************************************************************************
-//
-//! Takes a 16-bit word and returns the least-significant byte.
-//!
-//! \fn uint8_t lowerByte(uint16_t uint16_Word)
-//!
-//! \param temp_word is the original 16-bit word.
-//!
-//! \return 8-bit least-significant byte.
-//
-//*****************************************************************************
-uint8_t lowerByte(uint16_t uint16_Word)
+/*******************************************************************************
+ * Takes a 16-bit word and returns the 8-bit least-significant byte.
+ */
+static uint8_t lowerByte (uint16_t uint16_Word)
 {
-    uint8_t lsByte;
-    lsByte = (uint8_t) (uint16_Word & 0x00FF);
-
-    return lsByte;
+    return (uint8_t) (uint16_Word & 0x00FF);
 }
 
 
 
-//*****************************************************************************
-//
-//! Takes two 8-bit words and returns a concatenated 16-bit word.
-//!
-//! \fn uint16_t combineBytes(uint8_t upperByte, uint8_t lowerByte)
-//!
-//! \param upperByte is the 8-bit value that will become the MSB of the 16-bit word.
-//! \param lowerByte is the 8-bit value that will become the LSB of the 16-bit word.
-//!
-//! \return concatenated 16-bit word.
-//
-//*****************************************************************************
-uint16_t combineBytes(uint8_t upperByte, uint8_t lowerByte)
+/*******************************************************************************
+ * Takes two 8-bit words and returns a concatenated 16-bit word.
+ * @param upperByte is the 8-bit value that will become the MSB of the 16-bit word.
+ * @param lowerByte is the 8-bit value that will become the LSB of the 16-bit word.
+ */
+static uint16_t combineBytes (uint8_t upperByte, uint8_t lowerByte)
 {
-    uint16_t combinedValue;
-    combinedValue = ((uint16_t) upperByte << 8) | ((uint16_t) lowerByte);
-
-    return combinedValue;
+    return ((uint16_t) upperByte << 8) | ((uint16_t) lowerByte);
 }
 
 
 
-//*****************************************************************************
-//
-//! Combines ADC data bytes into a single signed 32-bit word.
-//!
-//! \fn int32_t combineDataBytes(const uint8_t dataBytes[])
-//!
-//! \param dataBytes is a pointer to uint8_t[] where the first element is the MSB.
-//!
-//! \return Returns the signed-extend 32-bit result.
-//
-//*****************************************************************************
-int32_t signExtend(const uint8_t dataBytes[])
+/*******************************************************************************
+ * Combines ADC data bytes into a single signed 32-bit word.
+ * @param	dataBytes is a pointer to uint8_t[] where the first element is the MSB.
+ * @return	Returns the signed-extend 32-bit result.
+ */
+static int32_t signExtend (const uint8_t dataBytes[])
 {
 
 #ifdef WORD_LENGTH_24BIT
@@ -878,30 +854,23 @@ int32_t signExtend(const uint8_t dataBytes[])
 
 
 
-//****************************************************************************
-//
-// Internal functions
-//
-//****************************************************************************
-
-
 //*****************************************************************************
 //
 //! Builds SPI TX data arrays according to number of opcodes provided and
 //! currently programmed device word length.
 //!
-//! \fn uint8_t buildSPIarray(const uint16_t opcodeArray[], uint8_t numberOpcodes, uint8_t byteArray[])
-//!
-//! \param opcodeArray[] pointer to an array of 16-bit opcodes to use in the SPI command.
-//! \param numberOpcodes the number of opcodes provided in opcodeArray[].
-//! \param byteArray[] pointer to an array of 8-bit SPI bytes to send to the device.
+//! @param opcodeArray[]	pointer to an array of 16-bit opcodes to use in the SPI command.
+//! @param numberOpcodes	the number of opcodes provided in opcodeArray[].
+//! @param byteArray[]		pointer to an array of 8-bit SPI bytes to send to the device.
 //!
 //! NOTE: The calling function must ensure it reserves sufficient memory for byteArray[]!
 //!
-//! \return number of bytes added to byteArray[].
+//! @return number of bytes added to byteArray[].
 //
 //*****************************************************************************
-uint8_t buildSPIarray(const uint16_t opcodeArray[], uint8_t numberOpcodes, uint8_t byteArray[])
+static uint8_t buildSPIarray ( const uint16_t opcodeArray[],
+								uint8_t numberOpcodes,
+								uint8_t byteArray[])
 {
     /*
      * Frame size = opcode word(s) + optional CRC word
@@ -939,20 +908,14 @@ uint8_t buildSPIarray(const uint16_t opcodeArray[], uint8_t numberOpcodes, uint8
 //! Modifies MODE register data to maintain device operation according to
 //! preselected mode(s) (RX_CRC_EN, WLENGTH, etc.).
 //!
-//! \fn uint16_t enforce_selected_device_mode(uint16_t data)
+//! @param data		uint16_t register data.
 //!
-//! \param data uint16_t register data.
-//!
-//! \return uint16_t modified register data.
+//! @return uint16_t modified register data.
 //
 //*****************************************************************************
-uint16_t enforce_selected_device_modes(uint16_t data)
+static uint16_t enforce_selected_device_modes(uint16_t data)
 {
-
-
-    ///////////////////////////////////////////////////////////////////////////
-    // Enforce RX_CRC_EN setting
-
+    // Enforce RX_CRC_EN setting ///////////////////////////////////////////////
 #ifdef ENABLE_CRC_IN
     // When writing to the MODE register, ensure RX_CRC_EN bit is ALWAYS set
     data |= MODE_RX_CRC_EN_ENABLED;
@@ -962,9 +925,7 @@ uint16_t enforce_selected_device_modes(uint16_t data)
 #endif // ENABLE_CRC_IN
 
 
-    ///////////////////////////////////////////////////////////////////////////
-    // Enforce WLENGH setting
-
+    // Enforce WLENGH setting //////////////////////////////////////////////////
 #ifdef WORD_LENGTH_24BIT
     // When writing to the MODE register, ensure WLENGTH bits are ALWAYS set to 01b
     data = (data & ~MODE_WLENGTH_MASK) | MODE_WLENGTH_24BIT;
@@ -980,9 +941,7 @@ uint16_t enforce_selected_device_modes(uint16_t data)
 #endif
 
 
-    ///////////////////////////////////////////////////////////////////////////
-    // Enforce DRDY_FMT setting
-
+    // Enforce DRDY_FMT setting ////////////////////////////////////////////////
 #ifdef DRDY_FMT_PULSE
     // When writing to the MODE register, ensure DRDY_FMT bit is ALWAYS set
     data = (data & ~MODE_DRDY_FMT_MASK) | MODE_DRDY_FMT_NEG_PULSE_FIXED_WIDTH;
@@ -992,9 +951,7 @@ uint16_t enforce_selected_device_modes(uint16_t data)
 #endif
 
 
-    ///////////////////////////////////////////////////////////////////////////
-    // Enforce CRC_TYPE setting
-
+    // Enforce CRC_TYPE setting ////////////////////////////////////////////////
 #ifdef CRC_CCITT
     // When writing to the MODE register, ensure CRC_TYPE bit is NEVER set
     data = (data & ~STATUS_CRC_TYPE_MASK) | STATUS_CRC_TYPE_16BIT_CCITT;
@@ -1013,16 +970,14 @@ uint16_t enforce_selected_device_modes(uint16_t data)
 //
 //! Returns the ADS131M0x configured word length used for SPI communication.
 //!
-//! \fn uint8_t getWordByteLength(void)
-//!
 //! NOTE: It is important that the MODE register value stored in registerMap[]
 //! remains in sync with the device. If these values get out of sync then SPI
 //! communication may fail!
 //!
-//! \return SPI word byte length (2, 3, or 4)
+//! @return SPI word byte length (2, 3, or 4)
 //
 //*****************************************************************************
-uint8_t getWordByteLength(void)
+static uint8_t getWordByteLength(void)
 {
     return wlength_byte_values[WLENGTH];
 }

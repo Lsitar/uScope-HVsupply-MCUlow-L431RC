@@ -76,10 +76,12 @@ void Error_Handler(void);
 #define ADC_SPI1_MOSI_GPIO_Port GPIOA
 #define ADC_DRDY_EXTI4_Pin GPIO_PIN_4
 #define ADC_DRDY_EXTI4_GPIO_Port GPIOC
+#define ADC_DRDY_EXTI4_EXTI_IRQn EXTI4_IRQn
 #define DAC_LOADDATA_Pin GPIO_PIN_5
 #define DAC_LOADDATA_GPIO_Port GPIOC
 #define ENC_CHA_EXTI0_Pin GPIO_PIN_0
 #define ENC_CHA_EXTI0_GPIO_Port GPIOB
+#define ENC_CHA_EXTI0_EXTI_IRQn EXTI0_IRQn
 #define ENC_CHB_Pin GPIO_PIN_1
 #define ENC_CHB_GPIO_Port GPIOB
 #define ENC_SW_Pin GPIO_PIN_2
@@ -120,33 +122,39 @@ extern SPI_HandleTypeDef hspi2;
 extern TIM_HandleTypeDef htim1;
 extern UART_HandleTypeDef huart1;
 
-// export names
-enum ePwmChannel
-{
-	PWM_CHANNEL_UK,
-	PWM_CHANNEL_UE,
-	PWM_CHANNEL_UF,
-	PWM_CHANNEL_PUMP,
-};
-
-
-
-
-struct sSystem
-{
-	float fAnodeCurrent;
-	float fKathodeVolt;
-	float fExtractVolt;
-	float fFocusVolt;
-	float fPumpVolt;
-
-	struct
-	{
-		uint_least8_t uRowActive;
-	} menu;
-};
-
-extern struct sSystem System;
+//// export names
+//enum ePwmChannel
+//{
+//	PWM_CHANNEL_UK,
+//	PWM_CHANNEL_UE,
+//	PWM_CHANNEL_UF,
+//	PWM_CHANNEL_PUMP,
+//};
+//
+//enum eState
+//{
+//	ON,
+//	OFF,
+//	TOGGLE,
+//};
+//
+//struct sSystem
+//{
+//	float fAnodeCurrent;
+//	float fKathodeVolt;
+//	float fExtractVolt;
+//	float fFocusVolt;
+//	float fPumpVolt;
+//
+////	adsChannelData_t adcData;
+//
+//	struct
+//	{
+//		uint_least8_t uRowActive;
+//	} menu;
+//};
+//
+//extern struct sSystem System;
 
 #define HALT_IF_DEBUGGING()										\
 	do {														\

@@ -34,74 +34,48 @@
 #ifndef INTERFACE_H_
 #define INTERFACE_H_
 
-#include "ads131m0x.h"
 
-
-//****************************************************************************
-//
-// Standard libraries
-//
-//****************************************************************************
 
 #include <stdbool.h>
 #include <stdint.h>
-
-
-
-//****************************************************************************
-//
+#include "ads131m0x.h"
 // Insert processor specific header file(s) here
-//
-//****************************************************************************
-
-/*  --- INSERT YOUR CODE HERE --- */
-//#include "ti/devices/msp432e4/driverlib/driverlib.h"
+#include "main.h"
 
 
 
 //*****************************************************************************
 //
-// Pin definitions (MSP432E401Y)
+// Pin definitions
 //
 //*****************************************************************************
 
-#define nDRDY_PORT          (GPIO_PORTM_BASE)
-#define nDRDY_PIN           (GPIO_PIN_0)
-#define nDRDY_INT           (INT_GPIOM)
+#define nDRDY_PORT          ADC_DRDY_EXTI4_GPIO_Port	//(GPIO_PORTM_BASE)
+#define nDRDY_PIN           ADC_DRDY_EXTI4_Pin	//(GPIO_PIN_0)
+#define nDRDY_INT           0	//(INT_GPIOM)
 
-#define nCS_PORT            (GPIO_PORTK_BASE)
-#define nCS_PIN             (GPIO_PIN_5)
+#define nCS_PORT            ADC_SPI_CS_GPIO_Port	//(GPIO_PORTK_BASE)
+#define nCS_PIN             ADC_SPI_CS_Pin	//(GPIO_PIN_5)
 
-#define nSYNC_nRESET_PORT   (GPIO_PORTK_BASE)
-#define nSYNC_nRESET_PIN    (GPIO_PIN_4)
-
-// (OPTIONAL) External clock source
-//#define CLKIN_PORT          (GPIO_PORTG_BASE)
-//#define CLKIN_PIN           (GPIO_PIN_1)
+#define nSYNC_nRESET_PORT   ADC_RESET_GPIO_Port	//(GPIO_PORTK_BASE)
+#define nSYNC_nRESET_PIN    ADC_RESET_Pin	//(GPIO_PIN_4)
 
 
 
-//*****************************************************************************
-//
-// Function Prototypes
-//
-//*****************************************************************************
+//******************************************************************************
+// Exported functions
+//******************************************************************************
 
 void    InitADC(void);
-void    delay_ms(const uint32_t delay_time_ms);
-void    delay_us(const uint32_t delay_time_us);
-void    setCS(const bool state);
-void    setSYNC_RESET(const bool state);
-void    toggleSYNC(void);
-void    toggleRESET(void);
+
+int		adsResetHard(void);
+void    adsSetCS(const bool state);
+void	adsSyncPulse(void);
 void    spiSendReceiveArrays(const uint8_t DataTx[], uint8_t DataRx[], const uint8_t byteLength);
 uint8_t spiSendReceiveByte(const uint8_t dataTx);
-bool    waitForDRDYinterrupt(const uint32_t timeout_ms);
 
-// Functions used for testing only
-bool    getCS(void);
-bool    getSYNC_RESET(void);
-void    setSYNC_RESET(const bool state);
+
+
 
 
 
