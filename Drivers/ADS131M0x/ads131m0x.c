@@ -31,6 +31,7 @@
  *
  */
 
+#include <string.h>
 #include "ads131m0x.h"
 #include "stm32l4xx_hal.h"
 #include "utilities.h"	// delay ms us
@@ -48,6 +49,15 @@ static uint16_t             registerMap[NUM_REGISTERS];
 // Array of SPI word lengths
 const static uint8_t        wlength_byte_values[] = {2, 3, 4, 4};
 
+// I want use const word length - therefore it must be default 24 bit word
+//#define BYTES_PER_WORD	(3u)
+const static uint32_t bytesPerWord = 3;
+
+// assume buffers for the longest case: 32 bit words
+static uint8_t adsDataRx[4 * 8];
+static uint8_t adsDataTx[sizeof(adsDataRx)];
+
+static uint32_t uTimerProtection;
 
 
 //******************************************************************************
@@ -66,7 +76,7 @@ static uint8_t getWordByteLength(void);
 
 
 
-//*****************************************************************************
+//******************************************************************************
 //
 //! Getter function to access registerMap array from outside of this module.
 //!
@@ -77,9 +87,9 @@ static uint8_t getWordByteLength(void);
 //! controlled register, it is recommend to use adsReadSingleRegister() to read the
 //! current register value.
 //!
-//! \return unsigned 16-bit register value.
+//! @return unsigned 16-bit register value.
 //
-//*****************************************************************************
+//******************************************************************************
 uint16_t registerMapGetValue(uint8_t address)
 {
     assert(address < NUM_REGISTERS);
@@ -88,44 +98,21 @@ uint16_t registerMapGetValue(uint8_t address)
 
 
 
-//*****************************************************************************
-//
-//! Example start up sequence for the ADS131M0x.
-//!
-//! Before calling this function, the device must be powered,
-//! the SPI/GPIO pins of the MCU must have already been configured,
-//! and (if applicable) the external clock source should be provided to CLKIN.
-//
-//*****************************************************************************
+/*
+ * Reset & start up sequence for the ADS131M0x.
+ *
+ * NOTE: Before calling this function, the device must be powered, the SPI/GPIO
+ * 		pins of the MCU must have already been configured, and clock source
+ * 		must be provided to CLKIN.
+ */
 void adsStartup(void)
 {
 	uint16_t response;
 	uint8_t uChannelsNum;
 
-//	// Proper reset. Time threshold: 2048 CLKIN / 8 MHz = 256 us
-//	setSYNC_RESET(LOW);
-//	delay_us(500);
-//	setSYNC_RESET(HIGH);
-//	delay_us(10);	// wait tREGACQ after reset to access registers
 	adsResetHard();
 
-//    // Initialize internal 'registerMap' array with device default settings
-//	registerMapRestoreDefaults();
-	// Default: 24-bit word size. Words are always MSB aligned.
-
-//	/* (OPTIONAL) Validate first response word when beginning SPI communication.
-//	 * Reset is confirmed by response: (0xFF20 | CHANCNT)  */
-//	response = adsSendCommand(OPCODE_NULL);
-//	if ((response & 0xFF20) != 0xFF20)
-//	{
-//		SPAM(("ADC ERROR after reset!\n"));
-//		ledError(4);
-//		powerLockOff();
-//		while (0xDEAD);
-//	}
-//	else
-//		SPAM(("ADC reset success\n"));
-
+	// check ID register
 	adsReadSingleRegister(ID_ADDRESS);
 	uChannelsNum = (uint8_t)((registerMap[ID_ADDRESS] >> 8) & 0x0F);
 
@@ -134,23 +121,12 @@ void adsStartup(void)
 	SPAM(("ADC status register: 0x%X, channels: %u\n", response, uChannelsNum));
 	UNUSED(response);
 
-	/* (OPTIONAL) Define your initial register settings here */
-//    adsWriteSingleRegister(CLOCK_ADDRESS, (CLOCK_DEFAULT & ~CLOCK_OSR_MASK) | CLOCK_OSR_256);
 	// disable unused channels, set OSR
 	uint16_t reg = CLOCK_CH0_EN_ENABLED + CLOCK_CH1_EN_ENABLED + CLOCK_XTAL_DIS_ENABLED + CLOCK_OSR_16384 + CLOCK_PWR_HR;
 	adsWriteSingleRegister(CLOCK_ADDRESS, reg);
 
-
-
-    /* (REQUIRED) Configure MODE register settings
-     * NOTE: This function call is required here for this particular code implementation to work.
-     * This function will enforce the MODE register settings as selected in the 'ads131m0x.h' header file.
-     */
-//    adsWriteSingleRegister(MODE_ADDRESS, MODE_DEFAULT);
-
-    /* (OPTIONAL) Read back all registers */
-
 	/* (OPTIONAL) Check STATUS register for faults */
+	uTimerProtection = HAL_GetTick();
 }
 
 
@@ -263,7 +239,7 @@ bool adsReadData(adsChannelData_t *DataStruct)
 //    uint8_t crcTx[4]                        = { 0 };
     uint8_t dataRx[4]                       = { 0 };
     uint8_t dataTx[4]                       = { 0 };
-    uint8_t bytesPerWord                    = getWordByteLength();
+//    uint8_t bytesPerWord                    = getWordByteLength();
 
 #ifdef ENABLE_CRC_IN
     // Build CRC word (only if "RX_CRC_EN" register bit is enabled)
@@ -402,22 +378,16 @@ bool adsReadData(adsChannelData_t *DataStruct)
     return ((bool) crcWord);
 }
 
+
+
 /*
- * Reads 8 words * 3 B per word = 24 B in blocking mode
- * 133 us @ 2.5 MHz SPI
- * 100 us @ 5 MHz SPI
- * 78 us @ 10 MHz SPI
+ * Reads 8 words in blocking mode.
+ * 133 us @ 2.5 MHz SPI @ 24 B
+ * 100 us @ 5 MHz SPI @ 24 B
+ * 78 us @ 10 MHz SPI @ 24 B
  */
 bool adsReadDataOptimized(adsChannelData_t *DataStruct)
 {
-#ifdef WORD_LENGTH_16BIT_TRUNCATED
-	const uint32_t bytesPerWord = 2;
-#elif defined WORD_LENGTH_24BIT
-	const uint32_t bytesPerWord = 3;
-#else
-	const uint32_t bytesPerWord = 4;
-#endif
-
     uint32_t i;
     uint8_t dataRx[bytesPerWord * 8];
     uint8_t dataTx[bytesPerWord * 8];
@@ -430,7 +400,7 @@ bool adsReadDataOptimized(adsChannelData_t *DataStruct)
 
     adsSetCS(LOW);
 
-    HAL_SPI_TransmitReceive(&hspi1, dataTx, dataRx, bytesPerWord * 8, 100);
+    HAL_SPI_TransmitReceive(&hspi1, dataTx, dataRx, bytesPerWord * 8, 10);
     i = 0;
     DataStruct->response = combineBytes(dataRx[i], dataRx[i+1]);
     i += bytesPerWord;
@@ -449,6 +419,70 @@ bool adsReadDataOptimized(adsChannelData_t *DataStruct)
     DataStruct->crc = combineBytes(dataRx[i], dataRx[i+1]);
 
     adsSetCS(HIGH);
+
+    // Returns true when a CRC error occurs
+    return false;
+}
+
+
+
+/*
+ * Triggers SPI transmission with interrupt.
+ */
+_OPT_OFF void adsReadDataIT(void)
+{
+    memset(adsDataRx, 0x00, sizeof(adsDataRx));
+    memset(adsDataTx, 0x00, sizeof(adsDataTx));
+
+	adsSetCS(LOW);
+	// read 8 words
+	HAL_SPI_TransmitReceive_IT(&hspi1, adsDataTx, adsDataRx, 8 * 3);
+
+    uTimerProtection = HAL_GetTick();
+}
+
+
+
+/*
+ * Called in SPI transmission end interrupt, finishes reading data triggered by
+ * corresponding function.
+ * 10 us version with index incrementing
+ * 9 us version with constant indexes
+ */
+_OPT_O3 bool adsReadDataITcallback(adsChannelData_t *DataStruct)
+{
+    uint32_t i = 0;
+    DataStruct->response = combineBytes(adsDataRx[i], adsDataRx[i+1]);
+    i += bytesPerWord;
+    DataStruct->channel0 = signExtend(&adsDataRx[i]);
+    i += bytesPerWord;
+    DataStruct->channel1 = signExtend(&adsDataRx[i]);
+    i += bytesPerWord;
+    DataStruct->channel2 = signExtend(&adsDataRx[i]);
+    i += bytesPerWord;
+    DataStruct->channel3 = signExtend(&adsDataRx[i]);
+    i += bytesPerWord;
+    DataStruct->channel4 = signExtend(&adsDataRx[i]);
+    i += bytesPerWord;
+    DataStruct->channel5 = signExtend(&adsDataRx[i]);
+    i += bytesPerWord;
+    DataStruct->crc = combineBytes(adsDataRx[i], adsDataRx[i+1]);
+
+//    DataStruct->response = combineBytes(adsDataRx[0], adsDataRx[1]);
+//    DataStruct->channel0 = signExtend(&adsDataRx[3]);
+//    DataStruct->channel1 = signExtend(&adsDataRx[6]);
+//    DataStruct->channel2 = signExtend(&adsDataRx[9]);
+//    DataStruct->channel3 = signExtend(&adsDataRx[12]);
+//    DataStruct->channel4 = signExtend(&adsDataRx[15]);
+//    DataStruct->channel5 = signExtend(&adsDataRx[18]);
+//    DataStruct->crc = combineBytes(adsDataRx[21], adsDataRx[22]);
+
+    adsSetCS(HIGH);
+
+    if (HAL_GetTick() - uTimerProtection > 1)
+    {
+    	adsStartup();
+    }
 
     // Returns true when a CRC error occurs
     return false;

@@ -30,7 +30,7 @@ static void buffAdd(uint8_t data)
 		HD44780_dataBuff.head = 0;
 }
 
-int32_t buffGet(void)
+_OPT_O3 int32_t buffGet(void)
 {
 	int32_t data;
 
@@ -176,14 +176,15 @@ static void send(enum eDataType DataType_, uint8_t byte) {
 
 }
 
-void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c)
+_OPT_O3 void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c)
 {
+//	testpin29(true);
 	static uint8_t data;
 
-	if (HD44780_dataBuff.flag_idle == false)
-	{	// this is callback after send
-		HD44780_dataBuff.CounterOfSentData++;
-	}
+//	if (HD44780_dataBuff.flag_idle == false)
+//	{	// this is callback after send
+//		HD44780_dataBuff.CounterOfSentData++;
+//	}
 
 	int32_t status = buffGet();
 
@@ -194,6 +195,7 @@ void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c)
 		data = (uint8_t)(status & 0x000000FF);
 		HAL_I2C_Master_Transmit_IT(&hi2c1, PCF8574_ADDR_WRITE, &data, 1);
 	}
+//	testpin29(false);
 }
 
 

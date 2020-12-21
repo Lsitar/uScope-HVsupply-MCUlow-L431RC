@@ -107,6 +107,7 @@ int main(void)
 	uint32_t cnt = 0;
 	UNUSED(cnt);
 	uint32_t uTimeTick;
+	UNUSED(uTimeTick);
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -166,11 +167,11 @@ int main(void)
 	  snprintf_(LCD_buff, 20, "%i", System.ads.data.channel1);
 	  HD44780_Puts(0, 1, LCD_buff);
 
-	  if (HAL_GetTick() - uTimeTick > 2000)
-	  {
-		  uTimeTick = HAL_GetTick();
-		  SPAM(("%i\t%i\n", System.ads.data.channel0, System.ads.data.channel1));
-	  }
+//	  if (HAL_GetTick() - uTimeTick > 2000)
+//	  {
+//		  uTimeTick = HAL_GetTick();
+//		  SPAM(("%i\t%i\n", System.ads.data.channel0, System.ads.data.channel1));
+//	  }
 
 //	  HD44780_demo();
 	  HAL_Delay(50);

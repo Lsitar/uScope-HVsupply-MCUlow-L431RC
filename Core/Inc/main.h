@@ -178,6 +178,8 @@ extern UART_HandleTypeDef huart1;
 	} while (0)													\
 
 #define _OPT_OFF	__attribute__((optimize("-O0")))
+#define _OPT_O2	__attribute__((optimize("-O2")))
+#define _OPT_O3	__attribute__((optimize("-O3")))
 
 
 /* USER CODE END Private defines */

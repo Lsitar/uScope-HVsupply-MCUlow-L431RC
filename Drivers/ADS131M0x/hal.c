@@ -101,6 +101,8 @@ void adsSetCS(const bool state)
  */
 int adsResetHard(void)
 {
+	adsSetCS(HIGH);
+
 	HAL_GPIO_WritePinLow(nSYNC_nRESET_PORT, nSYNC_nRESET_PIN);
 	delay_ms(1);		// Reset time threshold: 2048 CLKIN / 8 MHz = 256 us
 	HAL_GPIO_WritePinHigh(nSYNC_nRESET_PORT, nSYNC_nRESET_PIN);

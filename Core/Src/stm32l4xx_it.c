@@ -308,19 +308,31 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
 	if (GPIO_Pin == ADC_DRDY_EXTI4_Pin)
 	{
-		testpin29(true);
-
 		if (System.ads.ready == true)
+		{
+//			testpin29(true);
 //			adsReadData(&System.ads.data);
-			adsReadDataOptimized(&System.ads.data);
+//			adsReadDataOptimized(&System.ads.data);
+			adsReadDataIT();
+//			testpin29(false);
+		}
 
 		if (HAL_GetTick() - uTimeTick > 100)
 		{
 			uTimeTick = HAL_GetTick();
 			ledBlue(TOGGLE);
 		}
-		testpin29(false);
 	}
+}
+
+
+
+void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
+{
+	UNUSED(hspi);
+//	testpin29(true);
+	adsReadDataITcallback(&System.ads.data);
+//	testpin29(false);
 }
 
 
