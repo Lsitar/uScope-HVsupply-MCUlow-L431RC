@@ -1594,7 +1594,6 @@
 
 typedef struct
 {
-	bool ready;
     uint16_t response;
     uint16_t crc;
     int32_t channel0;
@@ -1622,6 +1621,12 @@ typedef struct
 #endif
 } adsChannelData_t;
 
+typedef struct
+{
+	bool ready;
+	adsChannelData_t data;
+} adsStatus_t;
+
 
 
 //******************************************************************************
@@ -1632,7 +1637,8 @@ typedef struct
 
 void        adsStartup(void);
 uint16_t    adsSendCommand(uint16_t op_code);
-bool        adsReadData(adsChannelData_t *DataStruct);
+bool        adsReadData(adsChannelData_t *);
+bool adsReadDataOptimized(adsChannelData_t *);
 uint16_t    adsReadSingleRegister(uint8_t address);
 void        adsWriteSingleRegister(uint8_t address, uint16_t data);
 bool        adsLockRegisters(void);

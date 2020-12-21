@@ -106,6 +106,7 @@ int main(void)
   /* USER CODE BEGIN 1 */
 	uint32_t cnt = 0;
 	UNUSED(cnt);
+	uint32_t uTimeTick;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -160,10 +161,16 @@ int main(void)
 //	  HD44780_Clear();
 
 	  char LCD_buff[20];
-	  snprintf_(LCD_buff, 20, "%i", System.adcData.channel0);
+	  snprintf_(LCD_buff, 20, "%i", System.ads.data.channel0);
 	  HD44780_Puts(0, 0, LCD_buff);
-	  snprintf_(LCD_buff, 20, "%i", System.adcData.channel1);
+	  snprintf_(LCD_buff, 20, "%i", System.ads.data.channel1);
 	  HD44780_Puts(0, 1, LCD_buff);
+
+	  if (HAL_GetTick() - uTimeTick > 2000)
+	  {
+		  uTimeTick = HAL_GetTick();
+		  SPAM(("%i\t%i\n", System.ads.data.channel0, System.ads.data.channel1));
+	  }
 
 //	  HD44780_demo();
 	  HAL_Delay(50);
@@ -361,7 +368,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_2EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -556,18 +563,35 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, ADC_RESET_Pin|ADC_SPI_CS_Pin|LED_BLUE_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, TP29_Pin|TP30_Pin|DAC_LOADDATA_Pin|LED_GREEN_Pin
+                          |LED_ORANGE_Pin|LED_RED_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, DAC_LOADDATA_Pin|LED_GREEN_Pin|LED_ORANGE_Pin|LED_RED_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, TP25_Pin|TP26_Pin|ADC_RESET_Pin|ADC_SPI_CS_Pin
+                          |LED_BLUE_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, DAC_SPI_CS_Pin|PWR_LOCK_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, DAC_SPI_CS_Pin|PWR_LOCK_Pin|TP31_Pin|TP32_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : ADC_RESET_Pin ADC_SPI_CS_Pin LED_BLUE_Pin */
-  GPIO_InitStruct.Pin = ADC_RESET_Pin|ADC_SPI_CS_Pin|LED_BLUE_Pin;
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(TP28_GPIO_Port, TP28_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pins : TP29_Pin TP30_Pin DAC_LOADDATA_Pin LED_GREEN_Pin
+                           LED_ORANGE_Pin LED_RED_Pin */
+  GPIO_InitStruct.Pin = TP29_Pin|TP30_Pin|DAC_LOADDATA_Pin|LED_GREEN_Pin
+                          |LED_ORANGE_Pin|LED_RED_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : TP25_Pin TP26_Pin ADC_RESET_Pin ADC_SPI_CS_Pin
+                           LED_BLUE_Pin */
+  GPIO_InitStruct.Pin = TP25_Pin|TP26_Pin|ADC_RESET_Pin|ADC_SPI_CS_Pin
+                          |LED_BLUE_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -578,13 +602,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(ADC_DRDY_EXTI4_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : DAC_LOADDATA_Pin LED_GREEN_Pin LED_ORANGE_Pin LED_RED_Pin */
-  GPIO_InitStruct.Pin = DAC_LOADDATA_Pin|LED_GREEN_Pin|LED_ORANGE_Pin|LED_RED_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pin : ENC_CHA_EXTI0_Pin */
   GPIO_InitStruct.Pin = ENC_CHA_EXTI0_Pin;
@@ -598,8 +615,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : DAC_SPI_CS_Pin PWR_LOCK_Pin */
-  GPIO_InitStruct.Pin = DAC_SPI_CS_Pin|PWR_LOCK_Pin;
+  /*Configure GPIO pins : DAC_SPI_CS_Pin PWR_LOCK_Pin TP31_Pin TP32_Pin */
+  GPIO_InitStruct.Pin = DAC_SPI_CS_Pin|PWR_LOCK_Pin|TP31_Pin|TP32_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -618,6 +635,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.Alternate = GPIO_AF0_MCO;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : TP28_Pin */
+  GPIO_InitStruct.Pin = TP28_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(TP28_GPIO_Port, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);

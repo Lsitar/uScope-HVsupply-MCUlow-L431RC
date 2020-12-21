@@ -308,19 +308,19 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
 	if (GPIO_Pin == ADC_DRDY_EXTI4_Pin)
 	{
-//		ITM_SendChar('x');
-//		ITM_SendChar('\n');
+		testpin29(true);
 
-		if (System.adcData.ready == true)
-			adsReadData(&System.adcData);
+		if (System.ads.ready == true)
+//			adsReadData(&System.ads.data);
+			adsReadDataOptimized(&System.ads.data);
 
 		if (HAL_GetTick() - uTimeTick > 100)
 		{
 			uTimeTick = HAL_GetTick();
 			ledBlue(TOGGLE);
 		}
+		testpin29(false);
 	}
-	;
 }
 
 

@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include "main.h"	// for GPIO's name definition, HAL lib, System struct
 #include "printf.h"	// for SPAM macro
 
@@ -115,10 +116,20 @@ static inline void pwmSetDuty(enum ePwmChannel channel, float duty)
 	}
 }
 
-static inline void testpin1(bool state)
+/*
+ * Testpoints
+ * 3 pins on left:
+ * 	TP28 - TP31 - TP32
+ *
+ * 4 pins by the edge:
+ * 	TP29 - TP30 - TP25 - TP26
+ */
+static inline void testpin29(bool state)
 {
-	if (state);
-//		HAL_GPIO_WritePinHigh(GPIOx, GPIO_Pin);
+	if (state)
+		HAL_GPIO_WritePinHigh(TP29_GPIO_Port, TP29_Pin);
+	else
+		HAL_GPIO_WritePinLow(TP29_GPIO_Port, TP29_Pin);
 }
 
 /*** Exported functions *******************************************************/

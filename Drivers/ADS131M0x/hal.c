@@ -69,7 +69,7 @@ void InitADC(void)
     // Run ADC startup function
     adsStartup();
 
-    System.adcData.ready = true;
+    System.ads.ready = true;
 }
 
 

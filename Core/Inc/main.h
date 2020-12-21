@@ -62,10 +62,18 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define ADC1_CH1_BAT_Pin GPIO_PIN_0
 #define ADC1_CH1_BAT_GPIO_Port GPIOC
+#define TP29_Pin GPIO_PIN_1
+#define TP29_GPIO_Port GPIOC
+#define TP30_Pin GPIO_PIN_2
+#define TP30_GPIO_Port GPIOC
 #define DAC_SPI2_MOSI_Pin GPIO_PIN_3
 #define DAC_SPI2_MOSI_GPIO_Port GPIOC
+#define TP25_Pin GPIO_PIN_0
+#define TP25_GPIO_Port GPIOA
 #define ADC_SPI1_SCK_Pin GPIO_PIN_1
 #define ADC_SPI1_SCK_GPIO_Port GPIOA
+#define TP26_Pin GPIO_PIN_2
+#define TP26_GPIO_Port GPIOA
 #define ADC_RESET_Pin GPIO_PIN_4
 #define ADC_RESET_GPIO_Port GPIOA
 #define ADC_SPI_CS_Pin GPIO_PIN_5
@@ -112,6 +120,12 @@ void Error_Handler(void);
 #define LED_ORANGE_GPIO_Port GPIOC
 #define LED_RED_Pin GPIO_PIN_12
 #define LED_RED_GPIO_Port GPIOC
+#define TP28_Pin GPIO_PIN_2
+#define TP28_GPIO_Port GPIOD
+#define TP31_Pin GPIO_PIN_4
+#define TP31_GPIO_Port GPIOB
+#define TP32_Pin GPIO_PIN_5
+#define TP32_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
 
 // export handles

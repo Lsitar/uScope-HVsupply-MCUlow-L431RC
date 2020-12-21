@@ -44,7 +44,7 @@ int32_t buffGet(void)
 		if (HD44780_dataBuff.tail == HD44780_BUFF_SIZE)
 		{
 			HD44780_dataBuff.tail = 0;
-			SPAM(("HD44780 bytes send: %u\n", (unsigned int)(HD44780_dataBuff.CounterOfSentData) ));
+//			SPAM(("LCD bytes send: %u\n", (unsigned int)(HD44780_dataBuff.CounterOfSentData) ));
 		}
 	}
 	return data;

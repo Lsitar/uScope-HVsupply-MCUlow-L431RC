@@ -20,7 +20,7 @@ struct sSystem
 	float fFocusVolt;
 	float fPumpVolt;
 
-	adsChannelData_t adcData;
+	adsStatus_t ads;
 
 	struct
 	{

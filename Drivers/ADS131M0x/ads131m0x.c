@@ -259,9 +259,10 @@ void adsWriteSingleRegister(uint8_t address, uint16_t data)
 //*****************************************************************************
 bool adsReadData(adsChannelData_t *DataStruct)
 {
-    int i;
-    uint8_t crcTx[4]                        = { 0 };
+//    int i;
+//    uint8_t crcTx[4]                        = { 0 };
     uint8_t dataRx[4]                       = { 0 };
+    uint8_t dataTx[4]                       = { 0 };
     uint8_t bytesPerWord                    = getWordByteLength();
 
 #ifdef ENABLE_CRC_IN
@@ -275,10 +276,11 @@ bool adsReadData(adsChannelData_t *DataStruct)
     adsSetCS(LOW);
 
     // Send NULL word, receive response word
-    for (i = 0; i < bytesPerWord; i++)
-    {
-        dataRx[i] = spiSendReceiveByte(0x00);
-    }
+//    for (i = 0; i < bytesPerWord; i++)
+//    {
+//        dataRx[i] = spiSendReceiveByte(0x00);
+//    }
+    HAL_SPI_TransmitReceive(&hspi1, dataTx, dataRx, bytesPerWord, 10);
     DataStruct->response = combineBytes(dataRx[0], dataRx[1]);
 
     // (OPTIONAL) Do something with the response (STATUS) word.
@@ -289,20 +291,22 @@ bool adsReadData(adsChannelData_t *DataStruct)
     uint16_t crcWord = 0;
 
     // Send 2nd word, receive channel 1 data
-    for (i = 0; i < bytesPerWord; i++)
-    {
-        dataRx[i] = spiSendReceiveByte(crcTx[i]);
-    }
+//    for (i = 0; i < bytesPerWord; i++)
+//    {
+//        dataRx[i] = spiSendReceiveByte(crcTx[i]);
+//    }
+    HAL_SPI_TransmitReceive(&hspi1, dataTx, dataRx, bytesPerWord, 10);
     DataStruct->channel0 = signExtend(&dataRx[0]);
     //crcWord = calculateCRC(&dataRx[0], bytesPerWord, crcWord);
 
 #if (CHANNEL_COUNT > 1)
 
     // Send 3rd word, receive channel 2 data
-    for (i = 0; i < bytesPerWord; i++)
-    {
-        dataRx[i] = spiSendReceiveByte(0x00);
-    }
+//    for (i = 0; i < bytesPerWord; i++)
+//    {
+//        dataRx[i] = spiSendReceiveByte(0x00);
+//    }
+    HAL_SPI_TransmitReceive(&hspi1, dataTx, dataRx, bytesPerWord, 10);
     DataStruct->channel1 = signExtend(&dataRx[0]);
     //crcWord = calculateCRC(&dataRx[0], bytesPerWord, crcWord);
 
@@ -310,10 +314,11 @@ bool adsReadData(adsChannelData_t *DataStruct)
 #if (CHANNEL_COUNT > 2)
 
     // Send 4th word, receive channel 3 data
-    for (i = 0; i < bytesPerWord; i++)
-    {
-        dataRx[i] = spiSendReceiveByte(0x00);
-    }
+//    for (i = 0; i < bytesPerWord; i++)
+//    {
+//        dataRx[i] = spiSendReceiveByte(0x00);
+//    }
+    HAL_SPI_TransmitReceive(&hspi1, dataTx, dataRx, bytesPerWord, 10);
     DataStruct->channel2 = signExtend(&dataRx[0]);
     //crcWord = calculateCRC(&dataRx[0], bytesPerWord, crcWord);
 
@@ -321,10 +326,11 @@ bool adsReadData(adsChannelData_t *DataStruct)
 #if (CHANNEL_COUNT > 3)
 
     // Send 5th word, receive channel 4 data
-    for (i = 0; i < bytesPerWord; i++)
-    {
-        dataRx[i] = spiSendReceiveByte(0x00);
-    }
+//    for (i = 0; i < bytesPerWord; i++)
+//    {
+//        dataRx[i] = spiSendReceiveByte(0x00);
+//    }
+    HAL_SPI_TransmitReceive(&hspi1, dataTx, dataRx, bytesPerWord, 10);
     DataStruct->channel3 = signExtend(&dataRx[0]);
     //crcWord = calculateCRC(&dataRx[0], bytesPerWord, crcWord);
 
@@ -332,10 +338,11 @@ bool adsReadData(adsChannelData_t *DataStruct)
 #if (CHANNEL_COUNT > 4)
 
     // Send 6th word, receive channel 5 data
-    for (i = 0; i < bytesPerWord; i++)
-    {
-        dataRx[i] = spiSendReceiveByte(0x00);
-    }
+//    for (i = 0; i < bytesPerWord; i++)
+//    {
+//        dataRx[i] = spiSendReceiveByte(0x00);
+//    }
+    HAL_SPI_TransmitReceive(&hspi1, dataTx, dataRx, bytesPerWord, 10);
     DataStruct->channel4 = signExtend(&dataRx[0]);
     //crcWord = calculateCRC(&dataRx[0], bytesPerWord, crcWord);
 
@@ -343,10 +350,11 @@ bool adsReadData(adsChannelData_t *DataStruct)
 #if (CHANNEL_COUNT > 5)
 
     // Send 7th word, receive channel 6 data
-    for (i = 0; i < bytesPerWord; i++)
-    {
-        dataRx[i] = spiSendReceiveByte(0x00);
-    }
+//    for (i = 0; i < bytesPerWord; i++)
+//    {
+//        dataRx[i] = spiSendReceiveByte(0x00);
+//    }
+    HAL_SPI_TransmitReceive(&hspi1, dataTx, dataRx, bytesPerWord, 10);
     DataStruct->channel5 = signExtend(&dataRx[0]);
     //crcWord = calculateCRC(&dataRx[0], bytesPerWord, crcWord);
 
@@ -375,10 +383,11 @@ bool adsReadData(adsChannelData_t *DataStruct)
 #endif
 
     // Send the next word, receive CRC data
-    for (i = 0; i < bytesPerWord; i++)
-    {
-        dataRx[i] = spiSendReceiveByte(0x00);
-    }
+//    for (i = 0; i < bytesPerWord; i++)
+//    {
+//        dataRx[i] = spiSendReceiveByte(0x00);
+//    }
+    HAL_SPI_TransmitReceive(&hspi1, dataTx, dataRx, bytesPerWord, 10);
     DataStruct->crc = combineBytes(dataRx[0], dataRx[1]);
 
     /* NOTE: If we continue calculating the CRC with a matching CRC, the result should be zero.
@@ -393,20 +402,70 @@ bool adsReadData(adsChannelData_t *DataStruct)
     return ((bool) crcWord);
 }
 
+/*
+ * Reads 8 words * 3 B per word = 24 B in blocking mode
+ * 133 us @ 2.5 MHz SPI
+ * 100 us @ 5 MHz SPI
+ * 78 us @ 10 MHz SPI
+ */
+bool adsReadDataOptimized(adsChannelData_t *DataStruct)
+{
+#ifdef WORD_LENGTH_16BIT_TRUNCATED
+	const uint32_t bytesPerWord = 2;
+#elif defined WORD_LENGTH_24BIT
+	const uint32_t bytesPerWord = 3;
+#else
+	const uint32_t bytesPerWord = 4;
+#endif
+
+    uint32_t i;
+    uint8_t dataRx[bytesPerWord * 8];
+    uint8_t dataTx[bytesPerWord * 8];
+
+    for (i=0; i<sizeof(dataRx); i++)
+    {
+    	dataRx[i] = 0;
+    	dataTx[i] = 0;
+    }
+
+    adsSetCS(LOW);
+
+    HAL_SPI_TransmitReceive(&hspi1, dataTx, dataRx, bytesPerWord * 8, 100);
+    i = 0;
+    DataStruct->response = combineBytes(dataRx[i], dataRx[i+1]);
+    i += bytesPerWord;
+    DataStruct->channel0 = signExtend(&dataRx[i]);
+    i += bytesPerWord;
+    DataStruct->channel1 = signExtend(&dataRx[i]);
+    i += bytesPerWord;
+    DataStruct->channel2 = signExtend(&dataRx[i]);
+    i += bytesPerWord;
+    DataStruct->channel3 = signExtend(&dataRx[i]);
+    i += bytesPerWord;
+    DataStruct->channel4 = signExtend(&dataRx[i]);
+    i += bytesPerWord;
+    DataStruct->channel5 = signExtend(&dataRx[i]);
+    i += bytesPerWord;
+    DataStruct->crc = combineBytes(dataRx[i], dataRx[i+1]);
+
+    adsSetCS(HIGH);
+
+    // Returns true when a CRC error occurs
+    return false;
+}
+
 
 
 //*****************************************************************************
 //
 //! Sends the specified SPI command to the ADC (NULL, STANDBY, or WAKEUP).
 //!
-//! \fn uint16_t adsSendCommand(uint16_t opcode)
-//!
-//! \param opcode SPI command byte.
+//! @param opcode SPI command byte.
 //!
 //! NOTE: Other commands have their own dedicated functions to support
 //! additional functionality.
 //!
-//! \return ADC response byte (typically the STATUS byte).
+//! @return ADC response byte (typically the STATUS byte).
 //
 //*****************************************************************************
 uint16_t adsSendCommand(uint16_t opcode)
@@ -448,18 +507,12 @@ uint16_t adsSendCommand(uint16_t opcode)
 
 
 
-//*****************************************************************************
-//
-//! Resets the device.
-//!
-//! \fn void adsResetSoft(void)
-//!
-//! NOTE: This function does not capture DOUT data, but it could be modified
-//! to do so.
-//!
-//! \return None.
-//
-//*****************************************************************************
+/*
+ * Resets the device by command.
+ *
+ * NOTE: This function does not capture DOUT data, but it could be modified to
+ * 		do so.
+ */
 void adsResetSoft(void)
 {
     // Build TX and RX byte array
