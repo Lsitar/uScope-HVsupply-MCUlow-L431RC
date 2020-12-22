@@ -34,6 +34,7 @@
 #include <string.h>
 #include "ads131m0x.h"
 #include "stm32l4xx_hal.h"
+#include "typedefs.h"
 #include "utilities.h"	// delay ms us
 
 
@@ -59,6 +60,14 @@ static uint8_t adsDataTx[sizeof(adsDataRx)];
 
 static uint32_t uTimerProtection;
 
+
+const float fCoeffUcDefault = 1.2f * (100e+3/50e+3) * (500e+6/180e+3) / ((float)(1u << 23));	// [V/bit] // 1.08 V on ADC at 6 kV in
+const float fCoeffUeDefault = 1.2f * (100e+3/24e+3) * (100e+6/76744.2f) / ((float)(1u << 23));	// [V/bit] // 1.16 V on ADC at 6 kV in
+const float fCoeffUfDefault = 1.2f * (100e+3/24e+3) * (100e+6/76744.2f) / ((float)(1u << 23));	// [V/bit] // 1.16 V on ADC at 6 kV in
+
+const float fCoeffIaDefault = 1.2f * (100e+3/47e+3) * (1.0f/51e+3) / ((float)(1u << 23));	// [A/bit] // 1.1985 V on ADC at 50 uA in
+
+const float fCoeffUpDefault = 1.0f/((6000.0f/12.0f) * (16300.0f/4300.0f) * 3.3f);	// [duty/V] // 0.959286 duty at 6 kV out and 3.3V ref
 
 //******************************************************************************
 //
@@ -431,12 +440,45 @@ bool adsReadDataOptimized(adsChannelData_t *DataStruct)
  */
 _OPT_OFF void adsReadDataIT(void)
 {
+	HAL_StatusTypeDef retVal;
+
     memset(adsDataRx, 0x00, sizeof(adsDataRx));
     memset(adsDataTx, 0x00, sizeof(adsDataTx));
 
 	adsSetCS(LOW);
 	// read 8 words
-	HAL_SPI_TransmitReceive_IT(&hspi1, adsDataTx, adsDataRx, 8 * 3);
+	retVal = HAL_SPI_TransmitReceive_IT(&hspi1, adsDataTx, adsDataRx, 8 * 3);
+
+	if (retVal != HAL_OK)
+	{
+		SPAM(("ADS IT error: %u\n", retVal));
+		adsSyncPulse();
+		retVal = HAL_SPI_Abort_IT(&hspi1);
+		SPAM(("ADS IT recovery retVal: %u\n", retVal));
+
+		retVal = HAL_SPI_TransmitReceive_IT(&hspi1, adsDataTx, adsDataRx, 8 * 3);
+		if (retVal != HAL_OK)
+		{
+			SPAM(("ADS IT recovery error: %u\n", retVal));
+			HALT_IF_DEBUGGING();
+		}
+
+//		if (retVal == HAL_OK)
+//		{
+//			retVal = HAL_SPI_TransmitReceive_IT(&hspi1, adsDataTx, adsDataRx, 8 * 3);
+//			if (retVal != HAL_OK)
+//			{
+//				SPAM(("ADS IT recovery error: %u\n", retVal));
+//				HALT_IF_DEBUGGING();
+//			}
+//		}
+//		else
+//		{
+//			SPAM(("ADS IT recovery error: %u\n", retVal));
+//			ledOrange(ON);
+//			HALT_IF_DEBUGGING();
+//		}
+	}
 
     uTimerProtection = HAL_GetTick();
 }
@@ -483,6 +525,9 @@ _OPT_O3 bool adsReadDataITcallback(adsChannelData_t *DataStruct)
     {
     	adsStartup();
     }
+
+    System.meas.fAnodeCurrent = fCoeffIaDefault * DataStruct->channel0;
+    System.meas.fCathodeVolt = fCoeffUcDefault * DataStruct->channel1;
 
     // Returns true when a CRC error occurs
     return false;

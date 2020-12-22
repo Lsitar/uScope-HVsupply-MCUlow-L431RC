@@ -323,6 +323,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			ledBlue(TOGGLE);
 		}
 	}
+	else if (GPIO_Pin == ENC_CHA_EXTI0_Pin)
+	{
+		encoderKnob_turnCallback();
+	}
 }
 
 

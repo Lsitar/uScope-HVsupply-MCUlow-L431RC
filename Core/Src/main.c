@@ -25,6 +25,7 @@
 #include "typedefs.h"
 #include "hd44780_i2c.h"
 #include "init.h"
+#include "ui.h"
 #include "utilities.h"
 /* USER CODE END Includes */
 
@@ -135,6 +136,7 @@ int main(void)
   MX_USART1_UART_Init();
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
+  HAL_NVIC_DisableIRQ(EXTI4_IRQn);
   init_user();
   /* USER CODE END 2 */
 
@@ -161,12 +163,6 @@ int main(void)
 //	  HAL_Delay(500);
 //	  HD44780_Clear();
 
-	  char LCD_buff[20];
-	  snprintf_(LCD_buff, 20, "%i", System.ads.data.channel0);
-	  HD44780_Puts(0, 0, LCD_buff);
-	  snprintf_(LCD_buff, 20, "%i", System.ads.data.channel1);
-	  HD44780_Puts(0, 1, LCD_buff);
-
 //	  if (HAL_GetTick() - uTimeTick > 2000)
 //	  {
 //		  uTimeTick = HAL_GetTick();
@@ -174,6 +170,7 @@ int main(void)
 //	  }
 
 //	  HD44780_demo();
+	  uiScreenUpdate();
 	  HAL_Delay(50);
 
   }
@@ -623,8 +620,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : KEY_UP_Pin KEY_DOWN_Pin KEY_ENTER_Pin KEY_ESC_Pin */
-  GPIO_InitStruct.Pin = KEY_UP_Pin|KEY_DOWN_Pin|KEY_ENTER_Pin|KEY_ESC_Pin;
+  /*Configure GPIO pins : KEY_LEFT_Pin KEY_RIGHT_Pin KEY_ENTER_Pin KEY_ESC_Pin */
+  GPIO_InitStruct.Pin = KEY_LEFT_Pin|KEY_RIGHT_Pin|KEY_ENTER_Pin|KEY_ESC_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);

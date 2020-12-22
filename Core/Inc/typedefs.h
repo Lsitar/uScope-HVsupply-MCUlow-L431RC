@@ -11,21 +11,28 @@ extern "C" {
 #endif
 
 #include "ads131m0x.h"
+#include "ui.h"
 
 struct sSystem
 {
-	float fAnodeCurrent;
-	float fKathodeVolt;
-	float fExtractVolt;
-	float fFocusVolt;
-	float fPumpVolt;
-
-	adsStatus_t ads;
+	struct
+	{
+		float fAnodeCurrent;
+		float fCathodeVolt;
+		float fExtractVolt;
+		float fFocusVolt;
+	} meas;
 
 	struct
 	{
-		uint_least8_t uRowActive;
-	} menu;
+		float fAnodeCurrent;
+		float fCathodeVolt;
+		float fFocusVolt;
+	} ref;
+
+	adsStatus_t ads;
+
+	struct sMenu menu;
 };
 
 extern struct sSystem System;

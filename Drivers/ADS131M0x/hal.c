@@ -69,6 +69,7 @@ void InitADC(void)
     // Run ADC startup function
     adsStartup();
 
+    HAL_NVIC_EnableIRQ(EXTI4_IRQn);
     System.ads.ready = true;
 }
 

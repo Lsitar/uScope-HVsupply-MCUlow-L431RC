@@ -89,31 +89,5 @@ void ledError(uint32_t errNo)
 }
 
 
-void readKeyboard(void)
-{
-	static uint32_t uTimeTick = 0;
-	static uint32_t uPowerCounter = 0;
-
-	if (HAL_GetTick() - uTimeTick > 50)
-	{
-		uTimeTick += 50;
-		// read every 50 ms
-
-		if (HAL_GPIO_ReadPin(KEY_PWR_GPIO_Port, KEY_PWR_Pin) == GPIO_PIN_RESET)
-			uPowerCounter++;
-		else
-			uPowerCounter = 0;
-
-		if (uPowerCounter > 40)
-		{
-			powerLockOff();
-			HD44780_Clear();
-			HD44780_Puts(5, 2, "Power off");
-			ledRed(ON);
-			while(0xDEADBABE);
-		}
-	}
-}
-
 
 /************************ (C) COPYRIGHT LSITA ******************END OF FILE****/

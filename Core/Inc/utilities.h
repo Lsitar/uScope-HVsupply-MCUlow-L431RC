@@ -136,7 +136,6 @@ static inline void testpin29(bool state)
 
 void ledDemo(void);
 void ledError(uint32_t);
-void readKeyboard(void);
 void delay_us(uint32_t us);
 void delay_ms(uint32_t ms);
 

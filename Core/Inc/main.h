@@ -104,10 +104,10 @@ void Error_Handler(void);
 #define PWR_LOCK_GPIO_Port GPIOB
 #define KEY_PWR_Pin GPIO_PIN_15
 #define KEY_PWR_GPIO_Port GPIOB
-#define KEY_UP_Pin GPIO_PIN_6
-#define KEY_UP_GPIO_Port GPIOC
-#define KEY_DOWN_Pin GPIO_PIN_7
-#define KEY_DOWN_GPIO_Port GPIOC
+#define KEY_LEFT_Pin GPIO_PIN_6
+#define KEY_LEFT_GPIO_Port GPIOC
+#define KEY_RIGHT_Pin GPIO_PIN_7
+#define KEY_RIGHT_GPIO_Port GPIOC
 #define KEY_ENTER_Pin GPIO_PIN_8
 #define KEY_ENTER_GPIO_Port GPIOC
 #define KEY_ESC_Pin GPIO_PIN_9
@@ -136,39 +136,7 @@ extern SPI_HandleTypeDef hspi2;
 extern TIM_HandleTypeDef htim1;
 extern UART_HandleTypeDef huart1;
 
-//// export names
-//enum ePwmChannel
-//{
-//	PWM_CHANNEL_UK,
-//	PWM_CHANNEL_UE,
-//	PWM_CHANNEL_UF,
-//	PWM_CHANNEL_PUMP,
-//};
-//
-//enum eState
-//{
-//	ON,
-//	OFF,
-//	TOGGLE,
-//};
-//
-//struct sSystem
-//{
-//	float fAnodeCurrent;
-//	float fKathodeVolt;
-//	float fExtractVolt;
-//	float fFocusVolt;
-//	float fPumpVolt;
-//
-////	adsChannelData_t adcData;
-//
-//	struct
-//	{
-//		uint_least8_t uRowActive;
-//	} menu;
-//};
-//
-//extern struct sSystem System;
+
 
 #define HALT_IF_DEBUGGING()										\
 	do {														\
