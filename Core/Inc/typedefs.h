@@ -13,26 +13,22 @@ extern "C" {
 #include "ads131m0x.h"
 #include "ui.h"
 
+struct sRegulatedVal
+{
+	float fAnodeCurrent;
+	float fCathodeVolt;
+	float fExtractVolt;
+	float fFocusVolt;
+	float fPumpVolt;
+};
+
 struct sSystem
 {
-	struct
-	{
-		float fAnodeCurrent;
-		float fCathodeVolt;
-		float fExtractVolt;
-		float fFocusVolt;
-	} meas;
+	struct sRegulatedVal meas;
 
-	struct
-	{
-		float fAnodeCurrent;
-		float fCathodeVolt;
-		float fFocusVolt;
-	} ref;
+	struct sRegulatedVal ref;
 
 	adsStatus_t ads;
-
-	struct sMenu menu;
 };
 
 extern struct sSystem System;

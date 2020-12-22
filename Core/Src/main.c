@@ -150,18 +150,6 @@ int main(void)
 
 	  readKeyboard();
 	  //ledDemo();
-//	  HD44780_Puts(0, 0, "Hello world");
-//	  HAL_Delay(500);
-//	  HD44780_Clear();
-//	  HD44780_Puts(1, 1, "Hello world");
-//	  HAL_Delay(500);
-//	  HD44780_Clear();
-//	  HD44780_Puts(2, 2, "Hello world");
-//	  HAL_Delay(500);
-//	  HD44780_Clear();
-//	  HD44780_Puts(3, 3, "Hello world");
-//	  HAL_Delay(500);
-//	  HD44780_Clear();
 
 //	  if (HAL_GetTick() - uTimeTick > 2000)
 //	  {
