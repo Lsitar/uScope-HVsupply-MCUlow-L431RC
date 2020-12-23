@@ -1624,6 +1624,7 @@ typedef struct
 typedef struct
 {
 	bool ready;
+	bool error;
 	adsChannelData_t data;
 } adsStatus_t;
 

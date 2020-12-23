@@ -94,6 +94,7 @@ void Error_Handler(void);
 #define ENC_CHB_GPIO_Port GPIOB
 #define ENC_SW_Pin GPIO_PIN_2
 #define ENC_SW_GPIO_Port GPIOB
+#define ENC_SW_EXTI_IRQn EXTI2_IRQn
 #define DAC_SPI2_SCK_Pin GPIO_PIN_10
 #define DAC_SPI2_SCK_GPIO_Port GPIOB
 #define DAC_SPI_CS_Pin GPIO_PIN_11

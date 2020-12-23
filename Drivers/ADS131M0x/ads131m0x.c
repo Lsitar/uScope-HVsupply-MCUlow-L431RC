@@ -452,16 +452,21 @@ _OPT_OFF void adsReadDataIT(void)
 	if (retVal != HAL_OK)
 	{
 		SPAM(("ADS IT error: %u\n", retVal));
-		adsSyncPulse();
-		retVal = HAL_SPI_Abort_IT(&hspi1);
-		SPAM(("ADS IT recovery retVal: %u\n", retVal));
-
-		retVal = HAL_SPI_TransmitReceive_IT(&hspi1, adsDataTx, adsDataRx, 8 * 3);
-		if (retVal != HAL_OK)
-		{
-			SPAM(("ADS IT recovery error: %u\n", retVal));
-			HALT_IF_DEBUGGING();
-		}
+		System.ads.ready = false;
+		System.ads.error = true;
+		HAL_NVIC_DisableIRQ(EXTI4_IRQn);
+		adsSetCS(HIGH);
+//		adsSyncPulse();
+//		adsSetCS(LOW);
+//		retVal = HAL_SPI_Abort_IT(&hspi1);
+//		SPAM(("ADS IT recovery retVal: %u\n", retVal));
+//
+//		retVal = HAL_SPI_TransmitReceive_IT(&hspi1, adsDataTx, adsDataRx, 8 * 3);
+//		if (retVal != HAL_OK)
+//		{
+//			SPAM(("ADS IT recovery error: %u\n", retVal));
+//			//HALT_IF_DEBUGGING();
+//		}
 
 //		if (retVal == HAL_OK)
 //		{
@@ -523,7 +528,8 @@ _OPT_O3 bool adsReadDataITcallback(adsChannelData_t *DataStruct)
 
     if (HAL_GetTick() - uTimerProtection > 1)
     {
-    	adsStartup();
+    	SPAM(("ADS Timeout\n"));
+//    	adsStartup();
     }
 
     System.meas.fAnodeCurrent = fCoeffIaDefault * DataStruct->channel0;

@@ -23,7 +23,11 @@ void delay_us(uint32_t us)
 		__NOP(); __NOP(); __NOP(); __NOP(); __NOP(); __NOP(); __NOP(); __NOP(); __NOP(); __NOP();
 		__NOP(); __NOP(); __NOP(); __NOP(); __NOP(); __NOP(); __NOP(); __NOP(); __NOP(); __NOP();
 		__NOP(); __NOP();
-		/* @72 MHz : 52x NOP - got experimentally */
+		/* @72 MHz : 52x NOP @ Nucleo F303RE - got experimentally */
+
+		__NOP(); __NOP(); __NOP(); __NOP(); __NOP(); __NOP(); __NOP(); __NOP(); __NOP(); __NOP();
+		__NOP(); __NOP(); __NOP(); __NOP();
+		/* @80 MHz : 66x NOP @ stm32 L431 - got experimentally */
 	}
 }
 #pragma GCC pop_options

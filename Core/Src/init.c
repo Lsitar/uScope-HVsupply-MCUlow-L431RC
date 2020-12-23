@@ -47,7 +47,7 @@ void init_user( void )
 
 	if (i2cStatus == HAL_OK)
 	{
-		SPAM(("I2C_LCD_ready\n"));
+		SPAM(("I2C_ready\n"));
 		HD44780_Init(20, 4);
 	}
 	else

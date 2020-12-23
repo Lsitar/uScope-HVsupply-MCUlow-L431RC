@@ -159,8 +159,11 @@ int main(void)
 
 //	  HD44780_demo();
 	  uiScreenUpdate();
-	  HAL_Delay(50);
 
+	  if (System.ads.error)
+	  {
+		  InitADC();
+	  }
   }
   /* USER CODE END 3 */
 }
@@ -354,7 +357,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_2EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -595,11 +598,17 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(ENC_CHA_EXTI0_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : ENC_CHB_Pin ENC_SW_Pin KEY_PWR_Pin */
-  GPIO_InitStruct.Pin = ENC_CHB_Pin|ENC_SW_Pin|KEY_PWR_Pin;
+  /*Configure GPIO pins : ENC_CHB_Pin KEY_PWR_Pin */
+  GPIO_InitStruct.Pin = ENC_CHB_Pin|KEY_PWR_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : ENC_SW_Pin */
+  GPIO_InitStruct.Pin = ENC_SW_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(ENC_SW_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : DAC_SPI_CS_Pin PWR_LOCK_Pin TP31_Pin TP32_Pin */
   GPIO_InitStruct.Pin = DAC_SPI_CS_Pin|PWR_LOCK_Pin|TP31_Pin|TP32_Pin;
@@ -632,6 +641,9 @@ static void MX_GPIO_Init(void)
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI2_IRQn);
 
   HAL_NVIC_SetPriority(EXTI4_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI4_IRQn);

@@ -71,6 +71,7 @@ void InitADC(void)
 
     HAL_NVIC_EnableIRQ(EXTI4_IRQn);
     System.ads.ready = true;
+    System.ads.error = false;
 }
 
 
