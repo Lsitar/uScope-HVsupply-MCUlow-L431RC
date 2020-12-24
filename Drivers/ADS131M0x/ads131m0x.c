@@ -398,36 +398,34 @@ bool adsReadData(adsChannelData_t *DataStruct)
 bool adsReadDataOptimized(adsChannelData_t *DataStruct)
 {
     uint32_t i;
-    uint8_t dataRx[bytesPerWord * 8];
-    uint8_t dataTx[bytesPerWord * 8];
 
-    for (i=0; i<sizeof(dataRx); i++)
-    {
-    	dataRx[i] = 0;
-    	dataTx[i] = 0;
-    }
+    memset(adsDataRx, 0x00, sizeof(adsDataRx));
+    memset(adsDataTx, 0x00, sizeof(adsDataTx));
 
     adsSetCS(LOW);
 
-    HAL_SPI_TransmitReceive(&hspi1, dataTx, dataRx, bytesPerWord * 8, 10);
+    HAL_SPI_TransmitReceive(&hspi1, adsDataTx, adsDataRx, bytesPerWord * 8, 10);
     i = 0;
-    DataStruct->response = combineBytes(dataRx[i], dataRx[i+1]);
+    DataStruct->response = combineBytes(adsDataRx[i], adsDataRx[i+1]);
     i += bytesPerWord;
-    DataStruct->channel0 = signExtend(&dataRx[i]);
+    DataStruct->channel0 = signExtend(&adsDataRx[i]);
     i += bytesPerWord;
-    DataStruct->channel1 = signExtend(&dataRx[i]);
+    DataStruct->channel1 = signExtend(&adsDataRx[i]);
     i += bytesPerWord;
-    DataStruct->channel2 = signExtend(&dataRx[i]);
+    DataStruct->channel2 = signExtend(&adsDataRx[i]);
     i += bytesPerWord;
-    DataStruct->channel3 = signExtend(&dataRx[i]);
+    DataStruct->channel3 = signExtend(&adsDataRx[i]);
     i += bytesPerWord;
-    DataStruct->channel4 = signExtend(&dataRx[i]);
+    DataStruct->channel4 = signExtend(&adsDataRx[i]);
     i += bytesPerWord;
-    DataStruct->channel5 = signExtend(&dataRx[i]);
+    DataStruct->channel5 = signExtend(&adsDataRx[i]);
     i += bytesPerWord;
-    DataStruct->crc = combineBytes(dataRx[i], dataRx[i+1]);
+    DataStruct->crc = combineBytes(adsDataRx[i], adsDataRx[i+1]);
 
     adsSetCS(HIGH);
+
+    System.meas.fAnodeCurrent = fCoeffIaDefault * DataStruct->channel0;
+    System.meas.fCathodeVolt = fCoeffUcDefault * DataStruct->channel1;
 
     // Returns true when a CRC error occurs
     return false;

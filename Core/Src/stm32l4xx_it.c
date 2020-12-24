@@ -334,8 +334,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		{
 //			testpin29(true);
 //			adsReadData(&System.ads.data);
-//			adsReadDataOptimized(&System.ads.data);
-			adsReadDataIT();
+			adsReadDataOptimized(&System.ads.data);
+//			adsReadDataIT();
 //			testpin29(false);
 		}
 
@@ -361,7 +361,7 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 {
 	UNUSED(hspi);
 //	testpin29(true);
-	adsReadDataITcallback(&System.ads.data);
+//	adsReadDataITcallback(&System.ads.data);
 //	testpin29(false);
 }
 
