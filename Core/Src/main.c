@@ -659,31 +659,7 @@ static void MX_GPIO_Init(void)
 
 
 
-//static void init(void)
-//{
-//	powerLockOn();
-//
-//	pwmSetDuty(PWM_CHANNEL_UK, (1.0/3.3));
-//	pwmSetDuty(PWM_CHANNEL_UE, (1.4142135/3.3));
-//	pwmSetDuty(PWM_CHANNEL_UF, (2.71/3.3));
-//	pwmSetDuty(PWM_CHANNEL_PUMP, (3.1415/3.3));
-//
-//	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);
-//	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
-//	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
-//	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
-//
-//	HAL_StatusTypeDef i2cStatus = HAL_I2C_IsDeviceReady(&hi2c1, 0x4E, 3, 100);
-//
-//	if (i2cStatus == HAL_OK)
-//	{
-//		SPAM(("I2C_ready\n"));
-//		HD44780_Init(20, 4);
-//	}
-//	else
-//		SPAM(("I2C_error\n"));
-//
-//}
+
 
 
 

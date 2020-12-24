@@ -23,6 +23,8 @@
 #include "stm32l4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <string.h>
+#include "communication.h"
 #include "typedefs.h"
 #include "utilities.h"
 /* USER CODE END Includes */
@@ -365,6 +367,29 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 //	testpin29(false);
 }
 
+
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+	static uint32_t uTimeTick;
+
+	if (HAL_GetTick() - uTimeTick > 100)
+	{
+		uTimeTick = HAL_GetTick();
+		ledGreen(TOGGLE);
+	}
+
+	if (commFrame.data.password != 0xBABEBABE)
+		ledRed(ON);
+	else
+		ledRed(OFF);
+
+	memcpy(&System.meas.fExtractVolt, &commFrame.data.fExtVolt, sizeof(float));
+	memcpy(&System.meas.fFocusVolt, &commFrame.data.fFocusVolt, sizeof(float));
+
+	// receive next byte
+	HAL_UART_Receive_IT(&huart1, &(commFrame.uartRxBuff[0]), sizeof(struct sCommFrame));
+}
 
 
 

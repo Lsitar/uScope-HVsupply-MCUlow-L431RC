@@ -5,19 +5,18 @@
  *      Author: lukasz
  */
 
-
 #include <string.h>	// memset()
 #include <stdbool.h>
-#include "main.h"
-#include "init.h"
-//#include "encoderKnob.h"
-//#include "i2c.h"
+#include "ads131m0x.h"
+#include "communication.h"
 #include "hd44780_i2c.h"
+#include "init.h"
+#include "main.h"
 #include "typedefs.h"
 #include "ui.h"
 #include "utilities.h"
 
-#include "ads131m0x.h"
+
 
 
 
@@ -64,9 +63,8 @@ void init_user( void )
 
 //	init_adc12();
 
-//	init_usart3();
-
-//	encoderKnob_init();		/* use EXTI10 and EXTI11 */
+	// UART - trigger first receiving
+	HAL_UART_Receive_IT(&huart1, &(commFrame.uartRxBuff[0]), sizeof(struct sCommFrame));
 
 	// show second screen
 	while (uiGetScreenTime() < 1500) __NOP();
