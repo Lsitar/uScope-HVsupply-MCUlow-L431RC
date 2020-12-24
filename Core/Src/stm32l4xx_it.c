@@ -208,6 +208,14 @@ void SysTick_Handler(void)
 void EXTI0_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI0_IRQn 0 */
+	if(__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_0) != 0x00u)
+	{
+		testpin29(true);
+		encoderKnob_turnCallback();
+		testpin29(false);
+		__HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_0);
+	}
+	return;
 
   /* USER CODE END EXTI0_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_0);
@@ -337,10 +345,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			ledBlue(TOGGLE);
 		}
 	}
-	else if (GPIO_Pin == ENC_CHA_EXTI0_Pin)
-	{
-		encoderKnob_turnCallback();
-	}
+//	else if (GPIO_Pin == ENC_CHA_EXTI0_Pin)
+//	{
+//		encoderKnob_turnCallback();
+//	}
 	else if (GPIO_Pin == ENC_SW_Pin)
 	{
 		encoderKnob_buttonCallback();

@@ -16,6 +16,7 @@ extern "C" {
 struct sRegulatedVal
 {
 	float fAnodeCurrent;
+	uint32_t uAnodeCurrent;	// 0.1 uA unit
 	float fCathodeVolt;
 	float fExtractVolt;
 	float fFocusVolt;

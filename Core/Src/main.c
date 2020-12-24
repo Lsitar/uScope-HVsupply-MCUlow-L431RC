@@ -105,6 +105,7 @@ static void MX_ADC1_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+
 	uint32_t cnt = 0;
 	UNUSED(cnt);
 	uint32_t uTimeTick;

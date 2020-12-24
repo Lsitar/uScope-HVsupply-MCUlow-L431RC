@@ -40,17 +40,6 @@ static inline void HAL_GPIO_WritePinHigh(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin)
 	GPIOx->BSRR = (uint32_t)GPIO_Pin;
 }
 
-static inline void powerLockOn (void)
-{
-	HAL_GPIO_WritePinHigh(PWR_LOCK_GPIO_Port, PWR_LOCK_Pin);
-}
-
-static inline void powerLockOff (void)
-{
-	SPAM(("%s\n", __func__));
-	HAL_GPIO_WritePinLow(PWR_LOCK_GPIO_Port, PWR_LOCK_Pin);
-}
-
 static inline void ledBlue(enum eState state)
 {
 	if (state == ON)
@@ -89,6 +78,31 @@ static inline void ledRed(enum eState state)
 		HAL_GPIO_WritePinLow(LED_RED_GPIO_Port, LED_RED_Pin);
 	else
 		HAL_GPIO_TogglePin(LED_RED_GPIO_Port, LED_RED_Pin);
+}
+
+static inline void powerLockOn (void)
+{
+	HAL_GPIO_WritePinHigh(PWR_LOCK_GPIO_Port, PWR_LOCK_Pin);
+}
+
+static inline void powerLockOff (void)
+{
+	SPAM(("%s\n", __func__));
+	HAL_GPIO_WritePinLow(PWR_LOCK_GPIO_Port, PWR_LOCK_Pin);
+}
+
+static inline void powerHVon (void)
+{
+	SPAM(("%s\n", __func__));
+	ledOrange(ON);
+	HAL_GPIO_WritePinHigh(TP32_GPIO_Port, TP32_Pin);
+}
+
+static inline void powerHVoff (void)
+{
+	SPAM(("%s\n", __func__));
+	ledOrange(OFF);
+	HAL_GPIO_WritePinLow(TP32_GPIO_Port, TP32_Pin);
 }
 
 static inline void pwmSetDuty(enum ePwmChannel channel, float duty)

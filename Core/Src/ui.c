@@ -47,6 +47,7 @@ enum eKey
 	KEY_NUMBER_OF,
 };
 
+static uint32_t uKeysPressedTime[KEY_NUMBER_OF] = {0};
 
 
 static void _changeScreenLeftRight(enum eKey key)
@@ -220,7 +221,6 @@ void uiScreenUpdate(void)
 
 	if (HAL_GetTick() - uTimeTick > 50)
 	{
-		testpin29(true);
 		uTimeTick += 50;
 //		uTimeTick = HAL_GetTick();
 
@@ -269,6 +269,7 @@ void uiScreenUpdate(void)
 			}
 
 			// print number anyway
+			HD44780_Puts(10, 0, "         ");	// clear line
 			snprintf_(LCD_buff, 20, "%.0f V", (localRef.fCathodeVolt) );
 			HD44780_Puts(10, 0, LCD_buff);
 			break;
@@ -284,6 +285,7 @@ void uiScreenUpdate(void)
 			}
 
 			// print number anyway
+			HD44780_Puts(10, 1, "         ");	// clear line
 			snprintf_(LCD_buff, 20, "%.1f uA", (localRef.fAnodeCurrent * 1e6) );
 			HD44780_Puts(10, 1, LCD_buff);
 			break;
@@ -299,6 +301,7 @@ void uiScreenUpdate(void)
 			}
 
 			// print number anyway
+			HD44780_Puts(10, 2, "         ");	// clear line
 			snprintf_(LCD_buff, 20, "%.0f V", (localRef.fFocusVolt) );
 			HD44780_Puts(10, 2, LCD_buff);
 			break;
@@ -314,6 +317,7 @@ void uiScreenUpdate(void)
 			}
 
 			// print number anyway
+			HD44780_Puts(10, 3, "         ");	// clear line
 			snprintf_(LCD_buff, 20, "%.0f V", (localRef.fPumpVolt) );
 			HD44780_Puts(10, 3, LCD_buff);
 			break;
@@ -323,7 +327,6 @@ void uiScreenUpdate(void)
 		case SCREEN_POWEROFF:
 			break;
 		}
-		testpin29(false);
 	}
 }
 
@@ -335,7 +338,7 @@ void uiScreenUpdate(void)
 void readKeyboard(void)
 {
 	static uint32_t uTimeTick = 0;
-	static uint32_t uKeysPressedTime[KEY_NUMBER_OF] = {0};
+//	static uint32_t uKeysPressedTime[KEY_NUMBER_OF] = {0};
 	static bool bInit;
 
 	if (bInit == false)
@@ -435,26 +438,53 @@ void readKeyboard(void)
 		}
 		else
 			uKeysPressedTime[KEY_RIGHT] = 0;
+
+		// KEY_ENC /////////////////////////////////////////////////////////////
+		if (uKeysPressedTime[KEY_ENC] != 0)
+		{
+			uKeysPressedTime[KEY_ENC]++;
+
+			if (uKeysPressedTime[KEY_ENC] == KB_POWEROFF_THRESHOLD)	// do not repeat 'pressed' action
+			{
+				if (HAL_GPIO_ReadPin(TP32_GPIO_Port, TP32_Pin) == GPIO_PIN_RESET)
+					powerHVon();
+				else
+					powerHVoff();
+			}
+		}
 	}
 }
 
 
 
+/*
+ * Change value when in Settings screen.
+ *
+ * NOTE: in/decreasing floats runs into problems with rounding. Instead, always
+ * 		operate here on integers. Back and forth casting of voltage with
+ * 		resolution 1 V works fine. Casting current escalated problem with
+ * 		rounding due to 1e+7 decimal multiplying. Therefore, always store
+ * 		reference current as integer (unit 0.1 uA, 1e-7 step).
+ *
+ * NOTE: without SPAM'ing interrupt lasts ca. 5 us, with usual SPAM text was
+ * 		100-150 us. With two chars send directly via ITM, IT lasts ca. 10 us.
+ */
 void encoderKnob_turnCallback(void)
 {
 	static uint32_t setValue;
 	static uint32_t lastTimeStamp;
+	GPIO_PinState levelA, levelB;
+	UNUSED(levelA);
 
-	if (HAL_GetTick() - lastTimeStamp < 5)
-	{
-		SPAM(("Turn too fast\n"));
-		__NOP();
-	}
-	else
+	// read pin states ASAP with minimum delay between them
+//	levelA = HAL_GPIO_ReadPin(ENC_CHA_EXTI0_GPIO_Port, ENC_CHA_EXTI0_Pin);	// assume interrupt is only on one edge (here: rising)
+	levelB = HAL_GPIO_ReadPin(ENC_CHB_GPIO_Port, ENC_CHB_Pin);
+
+	if (HAL_GetTick() - lastTimeStamp > 4)
 	{
 		/* load float value to uint */
 		if (actualScreen == SCREEN_SET_IA)
-			setValue = localRef.fAnodeCurrent * 1e+8;
+			setValue = localRef.uAnodeCurrent;
 		else if (actualScreen == SCREEN_SET_UC)
 			setValue = localRef.fCathodeVolt;
 		else if (actualScreen == SCREEN_SET_UF)
@@ -462,66 +492,28 @@ void encoderKnob_turnCallback(void)
 		else if (actualScreen == SCREEN_SET_UP)
 			setValue = localRef.fPumpVolt;
 
-		if (HAL_GPIO_ReadPin(ENC_CHA_EXTI0_GPIO_Port, ENC_CHA_EXTI0_Pin) == GPIO_PIN_SET)
-			SPAM(("A high, turn: "));
-		else
-			SPAM(("A low, turn: "));
-
-		/* falling edge on node A - check B level */
-		if (HAL_GPIO_ReadPin(ENC_CHB_GPIO_Port, ENC_CHB_Pin) == GPIO_PIN_SET)
+		/* rising edge on node A - check B level (test proven that here A is always high) */
+		if (levelB == GPIO_PIN_SET)
 		{
-			SPAM(("left\n"));
-			if (actualScreen == SCREEN_SET_IA)
-			{
-				if (setDigit == 100)
-				{
-					if (localRef.fAnodeCurrent > 10e-6)
-						localRef.fAnodeCurrent -= 10e-6;
-				}
-				else if (setDigit == 10)
-				{
-					if (localRef.fAnodeCurrent > 1e-6)
-						localRef.fAnodeCurrent -= 1e-6;
-				}
-				else
-				{
-					if (localRef.fAnodeCurrent > 1e-7)
-						localRef.fAnodeCurrent -= 1e-7;
-				}
-			}
-			else
-				setValue -= setDigit;
+			//SPAM(("left\n"));
+			//ITM_SendChar('L'); ITM_SendChar('\n');
+			setValue -= setDigit;
 		}
 		else
 		{
-			SPAM(("right\n"));
-			if (actualScreen == SCREEN_SET_IA)
-			{
-				if (setDigit == 100)
-				{
-					if (localRef.fAnodeCurrent <= (float)(40e-6))
-						localRef.fAnodeCurrent += (float)(10e-6);
-				}
-				else if (setDigit == 10)
-				{
-					if (localRef.fAnodeCurrent <= (float)(49e-6))
-						localRef.fAnodeCurrent += (float)(1e-6);
-				}
-				else
-				{
-					if (localRef.fAnodeCurrent <= (float)(49.9e-7))
-						localRef.fAnodeCurrent += (float)(1e-7);
-				}
-			}
-			else
-				setValue += setDigit;
+			//SPAM(("right\n"));
+			//ITM_SendChar('R'); ITM_SendChar('\n');
+			setValue += setDigit;
 		}
 
 		/* save uint to float */
 		if (actualScreen == SCREEN_SET_IA)
 		{
-//			if (setValue < 500)		// 50 uA limit
-//				localRef.fAnodeCurrent = (float)setValue / 1e+8;
+			if (setValue < 500)		// 50 uA limit
+			{
+				localRef.uAnodeCurrent = setValue;
+				localRef.fAnodeCurrent = ((float)(localRef.uAnodeCurrent))/(1e+7);
+			}
 		}
 		else if (actualScreen == SCREEN_SET_UC)
 		{
@@ -539,6 +531,12 @@ void encoderKnob_turnCallback(void)
 				localRef.fPumpVolt = (float)setValue;
 		}
 	}
+//	else
+//	{
+//		//SPAM(("Turn too fast\n"));
+//		ITM_SendChar('F'); ITM_SendChar('\n');
+//	}
+
 	lastTimeStamp = HAL_GetTick();
 }
 
@@ -548,8 +546,11 @@ void encoderKnob_buttonCallback(void)
 {
 	if (HAL_GPIO_ReadPin(ENC_SW_GPIO_Port, ENC_SW_Pin) == GPIO_PIN_SET)
 	{
-		SPAM(("Enc pressed\n"));
+//		SPAM(("Enc released\n"));
+		// increase digit position
 		setDigit *= 10;
+
+		// wrap digit position (depends on screen)
 		if (actualScreen == SCREEN_SET_IA)
 		{
 			if (setDigit > 100)	// 10 uA resolution
@@ -562,23 +563,13 @@ void encoderKnob_buttonCallback(void)
 			if (setDigit > 1000)	// 1000 V resolution
 				setDigit = 1;	// 1 V resolution
 		}
+		uKeysPressedTime[KEY_ENC] = 0;
 	}
 	else
 	{
-		SPAM(("Enc released\n"));
+//		SPAM(("Enc pressed\n"));
+		uKeysPressedTime[KEY_ENC] = 1;
 	}
-
-//	if (Bit_SET == GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_11))
-//	{	/* Button released */
-//		__NOP();
-//	}
-//	else
-//	{	/* Button pressed */
-//		if (locked == false)
-//			locked = true;
-//		else
-//			locked = false;
-//	}
 }
 
 /************************ (C) COPYRIGHT LSITA ******************END OF FILE****/
