@@ -148,7 +148,12 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-
+#ifdef MCU_HIGH
+	  if (System.ads.error)
+	  {
+		  InitADC();
+	  }
+#else
 	  readKeyboard();
 	  //ledDemo();
 
@@ -165,6 +170,7 @@ int main(void)
 	  {
 		  InitADC();
 	  }
+#endif // MCU_HIGH
   }
   /* USER CODE END 3 */
 }

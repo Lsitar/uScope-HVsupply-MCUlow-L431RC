@@ -11,7 +11,10 @@
 extern "C" {
 #endif
 
+#include <stdbool.h>
 #include <stdint.h>
+
+/* Exported types ------------------------------------------------------------*/
 
 struct sCommFrame
 {
@@ -31,6 +34,10 @@ union uCommFrame
 //extern uint8_t uartTxBuff[];
 extern union uCommFrame commFrame;
 
+/* Exported functions --------------------------------------------------------*/
+
+bool uartIsIdle(void);
+void sendResults(void);
 
 
 #ifdef __cplusplus

@@ -334,11 +334,15 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	{
 		if (System.ads.ready == true)
 		{
+#ifdef MCU_HIGH
+			adsReadDataOptimized(&System.ads.data);
+#else
 //			testpin29(true);
 //			adsReadData(&System.ads.data);
 			adsReadDataOptimized(&System.ads.data);
 //			adsReadDataIT();
 //			testpin29(false);
+#endif
 		}
 
 		if (HAL_GetTick() - uTimeTick > 100)
@@ -361,36 +365,15 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 {
+#ifdef MCU_HIGH
+	UNUSED(hspi);
+#else
 	UNUSED(hspi);
 //	testpin29(true);
 //	adsReadDataITcallback(&System.ads.data);
 //	testpin29(false);
+#endif // MCU_HIGH
 }
-
-
-
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-	static uint32_t uTimeTick;
-
-	if (HAL_GetTick() - uTimeTick > 100)
-	{
-		uTimeTick = HAL_GetTick();
-		ledGreen(TOGGLE);
-	}
-
-	if (commFrame.data.password != 0xBABEBABE)
-		ledRed(ON);
-	else
-		ledRed(OFF);
-
-	memcpy(&System.meas.fExtractVolt, &commFrame.data.fExtVolt, sizeof(float));
-	memcpy(&System.meas.fFocusVolt, &commFrame.data.fFocusVolt, sizeof(float));
-
-	// receive next byte
-	HAL_UART_Receive_IT(&huart1, &(commFrame.uartRxBuff[0]), sizeof(struct sCommFrame));
-}
-
 
 
 /* USER CODE END 1 */

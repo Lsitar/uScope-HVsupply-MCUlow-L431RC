@@ -38,7 +38,6 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "ads131m0x.h"
 // Insert processor specific header file(s) here
 #include "main.h"
 

@@ -424,8 +424,17 @@ bool adsReadDataOptimized(adsChannelData_t *DataStruct)
 
     adsSetCS(HIGH);
 
+#ifdef MCU_HIGH
+    System.meas.fExtractVolt = fCoeffUeDefault * DataStruct->channel0;
+    System.meas.fFocusVolt = fCoeffUfDefault * DataStruct->channel1;
+
+    if (uartIsIdle())
+    	sendResults();
+
+#else // MCU_LOW
     System.meas.fAnodeCurrent = fCoeffIaDefault * DataStruct->channel0;
     System.meas.fCathodeVolt = fCoeffUcDefault * DataStruct->channel1;
+#endif // MCU_HIGH
 
     // Returns true when a CRC error occurs
     return false;

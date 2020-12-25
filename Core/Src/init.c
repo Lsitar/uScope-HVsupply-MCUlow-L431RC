@@ -1,7 +1,7 @@
 /*
- * init_and_end.c
+ * init.c
  *
- *  Created on: Nov 19, 2018
+ *  Created on: Dec 19, 2020
  *      Author: lukasz
  */
 
@@ -18,14 +18,19 @@
 
 
 
-
-
 /*
- * Entry function for initialising peripherals.
- * Should be called before main().
+ * User init functions after HAL peripherals are inited.
+ * Should be called before main() loop.
  */
 void init_user( void )
 {
+
+#ifdef MCU_HIGH
+
+	memset(&System, 0x00, sizeof (System));
+	InitADC();
+
+#else
 	powerLockOn();
 
 	memset(&System, 0x00, sizeof (System));
@@ -72,6 +77,7 @@ void init_user( void )
 	while (uiGetScreenTime() < 1500) __NOP();
 	uiScreenChange(SCREEN_1);
 
+#endif // MCU_HIGH
 	return;
 }
 

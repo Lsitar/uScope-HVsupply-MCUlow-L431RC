@@ -38,6 +38,9 @@ extern "C" {
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
 
+// config
+//#define MCU_HIGH	// switch to code for High side MCU
+
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
