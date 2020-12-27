@@ -316,6 +316,12 @@ void SPI1_IRQHandler(void)
 void USART1_IRQHandler(void)
 {
   /* USER CODE BEGIN USART1_IRQn 0 */
+//	__NOP();
+//	ITM_SendChar('U');
+//	ITM_SendChar('\n');
+	static uint32_t cntIrq = 0;
+
+	cntIrq++;
 
   /* USER CODE END USART1_IRQn 0 */
   HAL_UART_IRQHandler(&huart1);

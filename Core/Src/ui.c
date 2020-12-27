@@ -362,7 +362,7 @@ void readKeyboard(void)
 				powerLockOff();
 				HD44780_Clear();
 				HD44780_Puts(5, 2, "Power off");
-				ledRed(ON);
+				//ledRed(ON);
 				while(0xDEADBABE);
 			}
 		}
