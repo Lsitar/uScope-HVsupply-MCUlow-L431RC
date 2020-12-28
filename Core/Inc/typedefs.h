@@ -27,7 +27,9 @@ struct sSystem
 {
 	struct sRegulatedVal meas;
 	struct sRegulatedVal ref;
-	struct sRegulatedVal disp;
+//	struct sRegulatedVal disp;
+	bool bHighSideOk;
+	bool bHighSideShutdown;
 
 	adsStatus_t ads;
 };

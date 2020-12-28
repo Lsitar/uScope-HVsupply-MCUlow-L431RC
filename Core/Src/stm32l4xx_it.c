@@ -317,16 +317,39 @@ void SPI1_IRQHandler(void)
 void USART1_IRQHandler(void)
 {
   /* USER CODE BEGIN USART1_IRQn 0 */
-//	__NOP();
+	__NOP();
 //	ITM_SendChar('U');
 //	ITM_SendChar('\n');
 	static uint32_t cntIrq = 0;
 
 	cntIrq++;
 
+	uint32_t regIsrBefore = USART1->ISR;
+
   /* USER CODE END USART1_IRQn 0 */
   HAL_UART_IRQHandler(&huart1);
   /* USER CODE BEGIN USART1_IRQn 1 */
+
+	uint32_t regIsrAfter = USART1->ISR;
+
+	uint32_t regDiff = regIsrBefore ^ regIsrAfter;
+	uint32_t regNoChange = regIsrBefore & regIsrAfter;
+
+	if (regIsrAfter & USART_ISR_PE)
+		__NOP();	// parity error
+	if (regIsrAfter & USART_ISR_FE)
+		USART1->ICR |= USART_ICR_FECF;	//__NOP();	// frame error
+	if (regIsrAfter & USART_ISR_NE)
+		USART1->ICR |= USART_ICR_NCF;	//__NOP();	// noise error (NF bit)
+	if (regIsrAfter & USART_ISR_ORE)
+		__NOP();	// overrun error
+	if (regIsrAfter & USART_ISR_RXNE)
+	{
+		regDiff = USART1->RDR;	//__NOP();	// Rx not empty error
+		HAL_UART_AbortReceive_IT(&huart1);
+	}
+	if (regIsrAfter & USART_ISR_PE)
+		__NOP();	// parity error
 
   /* USER CODE END USART1_IRQn 1 */
 }

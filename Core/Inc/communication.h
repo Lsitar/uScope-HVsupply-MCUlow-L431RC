@@ -26,7 +26,8 @@ struct sCommFrame
 union uCommFrame
 {
 	struct sCommFrame data;
-	uint8_t uartRxBuff[sizeof(struct sCommFrame) + 2];
+	uint8_t uartRxBuff[sizeof(struct sCommFrame) + 2];	// uint8 size for 8 bit data with parity
+//	uint16_t uartRxBuff[sizeof(struct sCommFrame) + 2];
 };
 
 
@@ -36,6 +37,7 @@ extern union uCommFrame commFrame;
 
 /* Exported functions --------------------------------------------------------*/
 
+void uartReceiveFrameIT(void);
 bool uartIsIdle(void);
 void sendResults(void);
 

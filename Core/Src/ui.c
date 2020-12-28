@@ -5,6 +5,7 @@
  *      Author: lukasz
  */
 #include <string.h>
+#include "communication.h"
 #include "main.h"
 #include "math.h"
 //#include "pid_controller.h"
@@ -155,10 +156,15 @@ static int32_t _printCurrent(float current, char* buff, uint8_t buffSize)
 {
 	current = fabsf(current * 1000000.0f);
 
-	if (current < 10.0f)
+//	if (current < 10.0f)
+//		return snprintf_(buff, buffSize, "%.2f uA", current);
+//	else
+//		return snprintf_(buff, buffSize, "%.1f uA", current);
+
+	if (current < 50.0f)
 		return snprintf_(buff, buffSize, "%.2f uA", current);
 	else
-		return snprintf_(buff, buffSize, "%.1f uA", current);
+		return snprintf_(buff, buffSize, ">50.0 uA", current);
 }
 
 
@@ -180,8 +186,10 @@ static int32_t _printPower(float power, char* buff, uint8_t buffSize)
 void uiScreenChange(enum eScreen newScreen)
 {
 	HD44780_Clear();
-	for (uint32_t i=0; i<sizeof(printedCharsLine); i++)
-		printedCharsLine[i] = 0;
+
+	memset(printedCharsLine,0x00,sizeof(printedCharsLine));
+//	for (uint32_t i=0; i<sizeof(printedCharsLine); i++)
+//		printedCharsLine[i] = 0;
 
 	switch (newScreen)
 	{
@@ -196,7 +204,7 @@ void uiScreenChange(enum eScreen newScreen)
 		// line 2 - Cathode current
 		HD44780_Puts(5, 1, "IA:");
 		// line 3 - Cathode power
-		HD44780_Puts(2, 2, "Power:");
+		HD44780_Puts(1, 2, "PowerA:");
 		// line 4 - Battery SoC
 		HD44780_Puts(0, 3, "Battery:");
 		break;
@@ -221,16 +229,16 @@ void uiScreenChange(enum eScreen newScreen)
 		HD44780_Puts(0, 2, "SET UF:");
 		HD44780_Puts(0, 3, "SET UP:");
 		// print UC
-		snprintf_(LCD_buff, 20, "%.0f V", (localRef.fCathodeVolt) );
+		printedCharsLine[0] = snprintf_(LCD_buff, 9, "%.0f V", (localRef.fCathodeVolt) );
 		HD44780_Puts(10, 0, LCD_buff);
 		// print IA
-		snprintf_(LCD_buff, 20, "%.1f uA", (localRef.fAnodeCurrent * 1e6) );
+		printedCharsLine[1] = snprintf_(LCD_buff, 9, "%.1f uA", (localRef.fAnodeCurrent * 1e6) );
 		HD44780_Puts(10, 1, LCD_buff);
 		// print UF
-		snprintf_(LCD_buff, 20, "%.0f V", (localRef.fFocusVolt) );
+		printedCharsLine[2] = snprintf_(LCD_buff, 9, "%.0f V", (localRef.fFocusVolt) );
 		HD44780_Puts(10, 2, LCD_buff);
 		// print UP
-		snprintf_(LCD_buff, 20, "%.0f V", (localRef.fPumpVolt) );
+		printedCharsLine[3] = snprintf_(LCD_buff, 9, "%.0f V", (localRef.fPumpVolt) );
 		HD44780_Puts(10, 3, LCD_buff);
 		break;
 
@@ -343,9 +351,9 @@ void uiScreenUpdate(void)
 					HD44780_Puts(0, 0, "SET UC:");
 			}
 
-			// print number anyway
-			HD44780_Puts(10, 0, "         ");	// clear line
-			printedCharsLine[0] = snprintf_(LCD_buff, 20, "%.0f V", (localRef.fCathodeVolt) );
+//			HD44780_Puts(10, 0, "         ");	// clear line
+			_clearField(10, 0, printedCharsLine[0]);
+			printedCharsLine[0] = snprintf_(LCD_buff, 10, "%.0f V", (localRef.fCathodeVolt) );
 			HD44780_Puts(10, 0, LCD_buff);
 			break;
 
@@ -359,9 +367,9 @@ void uiScreenUpdate(void)
 					HD44780_Puts(0, 1, "SET IA:");
 			}
 
-			// print number anyway
-			HD44780_Puts(10, 1, "         ");	// clear line
-			printedCharsLine[1] = snprintf_(LCD_buff, 20, "%.1f uA", (localRef.fAnodeCurrent * 1e6) );
+//			HD44780_Puts(10, 1, "         ");	// clear line
+			_clearField(10, 1, printedCharsLine[1]);
+			printedCharsLine[1] = snprintf_(LCD_buff, 10, "%.1f uA", (localRef.fAnodeCurrent * 1e6) );
 			HD44780_Puts(10, 1, LCD_buff);
 			break;
 
@@ -375,9 +383,9 @@ void uiScreenUpdate(void)
 					HD44780_Puts(0, 2, "SET UF:");
 			}
 
-			// print number anyway
-			HD44780_Puts(10, 2, "         ");	// clear line
-			printedCharsLine[2] = snprintf_(LCD_buff, 20, "%.0f V", (localRef.fFocusVolt) );
+//			HD44780_Puts(10, 2, "         ");	// clear line
+			_clearField(10, 2, printedCharsLine[2]);
+			printedCharsLine[2] = snprintf_(LCD_buff, 10, "%.0f V", (localRef.fFocusVolt) );
 			HD44780_Puts(10, 2, LCD_buff);
 			break;
 
@@ -391,9 +399,9 @@ void uiScreenUpdate(void)
 					HD44780_Puts(0, 3, "SET UP:");
 			}
 
-			// print number anyway
-			HD44780_Puts(10, 3, "         ");	// clear line
-			printedCharsLine[3] = snprintf_(LCD_buff, 20, "%.0f V", (localRef.fPumpVolt) );
+//			HD44780_Puts(10, 3, "         ");	// clear line
+			_clearField(10, 3, printedCharsLine[3]);
+			printedCharsLine[3] = snprintf_(LCD_buff, 10, "%.0f V", (localRef.fPumpVolt) );
 			HD44780_Puts(10, 3, LCD_buff);
 			break;
 
@@ -457,7 +465,7 @@ void readKeyboard(void)
 					uiScreenChange(SCREEN_SET_UC);
 				}
 				else
-				{
+				{	// settings confirmed
 					memcpy(&System.ref, &localRef, sizeof(System.ref));
 					uiScreenChange(SCREEN_1);
 				}
@@ -474,11 +482,11 @@ void readKeyboard(void)
 			if (uKeysPressedTime[KEY_ESC] == KB_PRESSED_THRESHOLD)	// do not repeat 'pressed' action
 			{
 				if (IS_SETTINGS_SCREEN)
-				{
+				{	// settings abandoned
 					uiScreenChange(SCREEN_1);
 				}
 				else
-				{
+				{	// reset HD44780 controller
 					enum eScreen tmp = actualScreen;
 					uiScreenChange(SCREEN_RESET);
 					uiScreenChange(tmp);
@@ -523,12 +531,21 @@ void readKeyboard(void)
 			{
 				if (HAL_GPIO_ReadPin(TP32_GPIO_Port, TP32_Pin) == GPIO_PIN_RESET)
 				{
+					System.bHighSideShutdown = false;
 					powerHVon();
-					// TODO wait for signal from MCU high
+					// TODO wait for proper Rx signal from MCU high
 					regulatorInit();
+					uartReceiveFrameIT();
+					//System.bHighSideOk = true;
 				}
 				else
+				{
+					System.bHighSideShutdown = true;
+					System.bHighSideOk = false;
+					HAL_UART_AbortReceive_IT(&huart1);	// returns always HAL_OK
+					// TODO discharge & shutdown HV before disabling 12 V
 					powerHVoff();
+				}
 			}
 		}
 	}
@@ -589,7 +606,7 @@ void encoderKnob_turnCallback(void)
 		/* save uint to float */
 		if (actualScreen == SCREEN_SET_IA)
 		{
-			if (setValue < 500)		// 50 uA limit
+			if ((setValue < 500)&&(setValue >= 0))		// 0 - 50 uA limit
 			{
 				localRef.uAnodeCurrent = setValue;
 				localRef.fAnodeCurrent = ((float)(localRef.uAnodeCurrent))/(1e+7);

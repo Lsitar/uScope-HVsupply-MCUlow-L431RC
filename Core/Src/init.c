@@ -35,13 +35,15 @@ void init_user( void )
 #else
 	powerLockOn();
 
+	System.bHighSideShutdown = true;
+	System.bHighSideOk = false;
+	System.ref.fCathodeVolt = -3000.0f;
+
 	// output PWM
 	pwmSetDuty(PWM_CHANNEL_UC, 0.0f);
 	pwmSetDuty(PWM_CHANNEL_UE, 0.0f);
 	pwmSetDuty(PWM_CHANNEL_UF, 0.0f);
 	pwmSetDuty(PWM_CHANNEL_PUMP, 0.0f);
-
-	System.ref.fCathodeVolt = -3000.0f;
 
 //	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);
 //	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
@@ -80,8 +82,8 @@ void init_user( void )
 
 //	init_adc12();
 
-	// UART - trigger first receiving
-	HAL_UART_Receive_IT(&huart1, &(commFrame.uartRxBuff[0]), sizeof(struct sCommFrame));
+//	// UART - trigger first receiving
+//	HAL_UART_Receive_IT(&huart1, &(commFrame.uartRxBuff[0]), sizeof(struct sCommFrame));
 
 	// show second screen
 	while (uiGetScreenTime() < 1500) __NOP();
