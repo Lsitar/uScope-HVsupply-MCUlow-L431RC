@@ -33,6 +33,7 @@
 
 #include <string.h>
 #include "ads131m0x.h"
+#include "regulator.h"	// pid tuning
 #include "stm32l4xx_hal.h"
 #include "typedefs.h"
 #include "utilities.h"	// delay ms us
@@ -44,7 +45,7 @@
 //
 //******************************************************************************
 
-// Array used to recall device register map configurations */
+// Array used to recall device register map configurations
 static uint16_t             registerMap[NUM_REGISTERS];
 
 // Array of SPI word lengths
@@ -65,7 +66,7 @@ const float fCoeffUcDefault = 1.2f * (100e+3/50e+3) * (500e+6/180e+3) / ((float)
 const float fCoeffUeDefault = 1.2f * (100e+3/24e+3) * (100e+6/76744.2f) / ((float)(1u << 23));	// [V/bit] // 1.16 V on ADC at 6 kV in
 const float fCoeffUfDefault = 1.2f * (100e+3/24e+3) * (100e+6/76744.2f) / ((float)(1u << 23));	// [V/bit] // 1.16 V on ADC at 6 kV in
 
-const float fCoeffIaDefault = 1.2f * (100e+3/47e+3) * (1.0f/51e+3) / ((float)(1u << 23));	// [A/bit] // 1.1985 V on ADC at 50 uA in
+const float fCoeffIaDefault = (-1.0f) * 1.2f * (100e+3/47e+3) * (1.0f/51e+3) / ((float)(1u << 23));	// [A/bit] // 1.1985 V on ADC at 50 uA in
 
 const float fCoeffUpDefault = 1.0f/((6000.0f/12.0f) * (16300.0f/4300.0f) * 3.3f);	// [duty/V] // 0.959286 duty at 6 kV out and 3.3V ref
 
@@ -434,6 +435,7 @@ bool adsReadDataOptimized(adsChannelData_t *DataStruct)
 #else // MCU_LOW
     System.meas.fAnodeCurrent = fCoeffIaDefault * DataStruct->channel0;
     System.meas.fCathodeVolt = fCoeffUcDefault * DataStruct->channel1;
+//    pidMeasOscPeriod();
 #endif // MCU_HIGH
 
     // Returns true when a CRC error occurs

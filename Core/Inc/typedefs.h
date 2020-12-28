@@ -26,14 +26,13 @@ struct sRegulatedVal
 struct sSystem
 {
 	struct sRegulatedVal meas;
-
 	struct sRegulatedVal ref;
+	struct sRegulatedVal disp;
 
 	adsStatus_t ads;
 };
 
 extern struct sSystem System;
-
 
 #ifdef __cplusplus
 }

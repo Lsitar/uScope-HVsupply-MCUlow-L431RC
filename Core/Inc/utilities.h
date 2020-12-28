@@ -20,13 +20,13 @@ enum eState
 	TOGGLE,
 };
 
-enum ePwmChannel
-{
-	PWM_CHANNEL_UK,
-	PWM_CHANNEL_UE,
-	PWM_CHANNEL_UF,
-	PWM_CHANNEL_PUMP,
-};
+//enum ePwmChannel
+//{
+//	PWM_CHANNEL_UC,
+//	PWM_CHANNEL_UE,
+//	PWM_CHANNEL_UF,
+//	PWM_CHANNEL_PUMP,
+//};
 
 /*** Exported inline snippets *************************************************/
 
@@ -105,30 +105,30 @@ static inline void powerHVoff (void)
 	HAL_GPIO_WritePinLow(TP32_GPIO_Port, TP32_Pin);
 }
 
-static inline void pwmSetDuty(enum ePwmChannel channel, float duty)
-{
-	if (duty > 1.0f)
-	{
-		SPAM(("%s wrong duty!", __func__ ));
-		return;
-	}
-
-	switch (channel)
-	{
-	case PWM_CHANNEL_UK:
-		TIM1->CCR1 = (uint32_t)(65535.0 * duty);
-		break;
-	case PWM_CHANNEL_UE:
-		TIM1->CCR2 = (uint32_t)(65535.0 * duty);
-		break;
-	case PWM_CHANNEL_UF:
-		TIM1->CCR3 = (uint32_t)(65535.0 * duty);
-		break;
-	case PWM_CHANNEL_PUMP:
-		TIM1->CCR4 = (uint32_t)(65535.0 * duty);
-		break;
-	}
-}
+//static inline void pwmSetDuty(enum ePwmChannel PWM_CHANNEL_, float duty)
+//{
+//	if (duty > 1.0f)
+//	{
+//		SPAM(("%s wrong duty!", __func__ ));
+//		return;
+//	}
+//
+//	switch (PWM_CHANNEL_)
+//	{
+//	case PWM_CHANNEL_UC:
+//		TIM1->CCR1 = (uint32_t)(65535.0 * duty);
+//		break;
+//	case PWM_CHANNEL_UE:
+//		TIM1->CCR2 = (uint32_t)(65535.0 * duty);
+//		break;
+//	case PWM_CHANNEL_UF:
+//		TIM1->CCR3 = (uint32_t)(65535.0 * duty);
+//		break;
+//	case PWM_CHANNEL_PUMP:
+//		TIM1->CCR4 = (uint32_t)(65535.0 * duty);
+//		break;
+//	}
+//}
 
 /*
  * Testpoints

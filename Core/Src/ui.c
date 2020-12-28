@@ -6,8 +6,11 @@
  */
 #include <string.h>
 #include "main.h"
-#include "ui.h"
+#include "math.h"
+//#include "pid_controller.h"
+#include "regulator.h"
 #include "typedefs.h"
+#include "ui.h"
 #include "utilities.h"
 
 /* private variables */
@@ -17,7 +20,7 @@ static enum eScreen actualScreen;
 static uint32_t uScreenTimer;		// measure time from last screenChange
 static struct sRegulatedVal localRef;	// local copy of values changed at settings
 static bool bBlink;
-
+static int printedCharsLine[4] = {0};
 
 static uint32_t setDigit = 1;
 
@@ -26,6 +29,7 @@ static uint32_t setDigit = 1;
 #define KB_READ_INTERVAL		50	// ms
 #define KB_PRESSED_THRESHOLD	2	// ticks ca. 100 ms
 #define KB_POWEROFF_THRESHOLD	40	// ticks ca. 2 s
+#define LCD_UPDATERATE_MS		333	// 3 Hz
 #define LCD_BLINK_TIME			500	// ms per state
 
 /* macros */
@@ -119,9 +123,65 @@ static bool _blinkTimer(void)
 
 
 
+static void _clearField(int8_t x, uint8_t y, uint8_t len)
+{
+	char buff[len+1];
+
+	for (uint32_t i=0; i<len; i++)
+		buff[i] = ' ';
+
+	buff[len] = '\0';
+
+	HD44780_Puts(x, y, buff);
+}
+
+
+
+static int32_t _printVoltage(float voltage, char* buff, uint8_t buffSize)
+{
+	float absVoltage = fabsf(voltage);
+
+	if (absVoltage < 100.0f)
+		return snprintf_(buff, buffSize, "%.2f V", voltage);
+	else if (absVoltage < 1000.0f)
+		return snprintf_(buff, buffSize, "%.1f V", voltage);
+	else
+		return snprintf_(buff, buffSize, "%.0f V", voltage);
+}
+
+
+
+static int32_t _printCurrent(float current, char* buff, uint8_t buffSize)
+{
+	current = fabsf(current * 1000000.0f);
+
+	if (current < 10.0f)
+		return snprintf_(buff, buffSize, "%.2f uA", current);
+	else
+		return snprintf_(buff, buffSize, "%.1f uA", current);
+}
+
+
+
+static int32_t _printPower(float power, char* buff, uint8_t buffSize)
+{
+	power = fabsf(power * 1000.0f);
+
+	if (power < 10.0f)
+		return snprintf_(buff, buffSize, "%.2f mW", power);
+	else if (power < 100.0f)
+		return snprintf_(buff, buffSize, "%.1f mW", power);
+	else
+		return snprintf_(buff, buffSize, "%.0f mW", power);
+}
+
+
+
 void uiScreenChange(enum eScreen newScreen)
 {
 	HD44780_Clear();
+	for (uint32_t i=0; i<sizeof(printedCharsLine); i++)
+		printedCharsLine[i] = 0;
 
 	switch (newScreen)
 	{
@@ -219,10 +279,9 @@ void uiScreenUpdate(void)
 		bInit = true;
 	}
 
-	if (HAL_GetTick() - uTimeTick > 50)
+	if (HAL_GetTick() - uTimeTick > LCD_UPDATERATE_MS)
 	{
-		uTimeTick += 50;
-//		uTimeTick = HAL_GetTick();
+		uTimeTick += LCD_UPDATERATE_MS;
 
 		switch (actualScreen)
 		{
@@ -230,32 +289,48 @@ void uiScreenUpdate(void)
 			break;
 
 		case SCREEN_1:
+		{
 			// line 1 - Cathode voltage
+			_clearField(9, 0, printedCharsLine[0]);
 	//		snprintf_(LCD_buff, 20, "%i", System.ads.data.channel1);
-			snprintf_(LCD_buff, 20, "%.2f V", System.meas.fCathodeVolt);
+			printedCharsLine[0] = _printVoltage(System.meas.fCathodeVolt, LCD_buff, 11);
 			HD44780_Puts(9, 0, LCD_buff);
-			// line 2 - Anode current
-	//		snprintf_(LCD_buff, 20, "%i", System.ads.data.channel0);
-			snprintf_(LCD_buff, 20, "%.2f uA", (System.meas.fAnodeCurrent * 1e+6));
-			HD44780_Puts(9, 1, LCD_buff);
-			// line 3 - Anode power
-	//		snprintf_(LCD_buff, 20, "%i", (System.ads.data.channel0 * System.ads.data.channel1));
-			snprintf_(LCD_buff, 20, "%.2f mW", (System.meas.fCathodeVolt * System.meas.fAnodeCurrent * 1000.0f));
-			HD44780_Puts(9, 2, LCD_buff);
-			// line 4 - Battery SoC TODO
-			break;
 
+			// line 2 - Anode current
+			_clearField(9, 1, printedCharsLine[1]);
+	//		snprintf_(LCD_buff, 20, "%i", System.ads.data.channel0);
+			printedCharsLine[1] = _printCurrent(System.meas.fAnodeCurrent, LCD_buff, 11);
+			HD44780_Puts(9, 1, LCD_buff);
+
+			// line 3 - Anode power
+			_clearField(9, 2, printedCharsLine[2]);
+	//		snprintf_(LCD_buff, 20, "%i", (System.ads.data.channel0 * System.ads.data.channel1));
+			printedCharsLine[2] = _printPower((System.meas.fCathodeVolt * System.meas.fAnodeCurrent), LCD_buff, 11);
+
+			HD44780_Puts(9, 2, LCD_buff);
+
+			// line 4 - Battery SoC TODO
+			_clearField(9, 0, printedCharsLine[3]);
+			break;
+		}
 		case SCREEN_2: // Ue Uf Up
 			// line 1 - Extract voltage
-			snprintf_(LCD_buff, 20, "%.2f V", System.meas.fExtractVolt);
+			_clearField(9, 0, printedCharsLine[0]);
+			printedCharsLine[0] = _printVoltage(System.meas.fExtractVolt, LCD_buff, 11);
 			HD44780_Puts(9, 0, LCD_buff);
+
 			// line 2 - Focus voltage
-			snprintf_(LCD_buff, 20, "%.2f V", (System.meas.fFocusVolt));
+			_clearField(9, 1, printedCharsLine[1]);
+			printedCharsLine[1] = _printVoltage(System.meas.fFocusVolt, LCD_buff, 11);
 			HD44780_Puts(9, 1, LCD_buff);
+
 			// line 3 - Pump voltage
-			snprintf_(LCD_buff, 20, "%.2f V", (System.ref.fPumpVolt));
+			_clearField(9, 2, printedCharsLine[2]);
+			printedCharsLine[2] = _printVoltage(System.meas.fPumpVolt, LCD_buff, 11);
 			HD44780_Puts(9, 2, LCD_buff);
+
 			// line 4 - Battery SoC TODO
+			_clearField(9, 3, printedCharsLine[3]);
 			break;
 
 		case SCREEN_SET_UC:
@@ -263,14 +338,14 @@ void uiScreenUpdate(void)
 			if (_blinkTimer() == true)
 			{
 				if (bBlink == true)
-					HD44780_Puts(0, 0, "          ");	// clear one text line
+					HD44780_Puts(0, 0, "       ");	// clear one text line
 				else
 					HD44780_Puts(0, 0, "SET UC:");
 			}
 
 			// print number anyway
 			HD44780_Puts(10, 0, "         ");	// clear line
-			snprintf_(LCD_buff, 20, "%.0f V", (localRef.fCathodeVolt) );
+			printedCharsLine[0] = snprintf_(LCD_buff, 20, "%.0f V", (localRef.fCathodeVolt) );
 			HD44780_Puts(10, 0, LCD_buff);
 			break;
 
@@ -279,14 +354,14 @@ void uiScreenUpdate(void)
 			if (_blinkTimer() == true)
 			{
 				if (bBlink == true)
-					HD44780_Puts(0, 1, "          ");	// clear one text line
+					HD44780_Puts(0, 1, "       ");	// clear one text line
 				else
 					HD44780_Puts(0, 1, "SET IA:");
 			}
 
 			// print number anyway
 			HD44780_Puts(10, 1, "         ");	// clear line
-			snprintf_(LCD_buff, 20, "%.1f uA", (localRef.fAnodeCurrent * 1e6) );
+			printedCharsLine[1] = snprintf_(LCD_buff, 20, "%.1f uA", (localRef.fAnodeCurrent * 1e6) );
 			HD44780_Puts(10, 1, LCD_buff);
 			break;
 
@@ -295,14 +370,14 @@ void uiScreenUpdate(void)
 			if (_blinkTimer() == true)
 			{
 				if (bBlink == true)
-					HD44780_Puts(0, 2, "          ");	// clear one text line
+					HD44780_Puts(0, 2, "       ");	// clear one text line
 				else
 					HD44780_Puts(0, 2, "SET UF:");
 			}
 
 			// print number anyway
 			HD44780_Puts(10, 2, "         ");	// clear line
-			snprintf_(LCD_buff, 20, "%.0f V", (localRef.fFocusVolt) );
+			printedCharsLine[2] = snprintf_(LCD_buff, 20, "%.0f V", (localRef.fFocusVolt) );
 			HD44780_Puts(10, 2, LCD_buff);
 			break;
 
@@ -311,14 +386,14 @@ void uiScreenUpdate(void)
 			if (_blinkTimer() == true)
 			{
 				if (bBlink == true)
-					HD44780_Puts(0, 3, "          ");	// clear one text line
+					HD44780_Puts(0, 3, "       ");	// clear one text line
 				else
 					HD44780_Puts(0, 3, "SET UP:");
 			}
 
 			// print number anyway
 			HD44780_Puts(10, 3, "         ");	// clear line
-			snprintf_(LCD_buff, 20, "%.0f V", (localRef.fPumpVolt) );
+			printedCharsLine[3] = snprintf_(LCD_buff, 20, "%.0f V", (localRef.fPumpVolt) );
 			HD44780_Puts(10, 3, LCD_buff);
 			break;
 
@@ -447,7 +522,11 @@ void readKeyboard(void)
 			if (uKeysPressedTime[KEY_ENC] == KB_POWEROFF_THRESHOLD)	// do not repeat 'pressed' action
 			{
 				if (HAL_GPIO_ReadPin(TP32_GPIO_Port, TP32_Pin) == GPIO_PIN_RESET)
+				{
 					powerHVon();
+					// TODO wait for signal from MCU high
+					regulatorInit();
+				}
 				else
 					powerHVoff();
 			}
@@ -471,7 +550,8 @@ void readKeyboard(void)
  */
 void encoderKnob_turnCallback(void)
 {
-	static uint32_t setValue;
+//	static uint32_t setValue;
+	static int32_t setValue;
 	static uint32_t lastTimeStamp;
 	GPIO_PinState levelA, levelB;
 	UNUSED(levelA);
@@ -517,7 +597,8 @@ void encoderKnob_turnCallback(void)
 		}
 		else if (actualScreen == SCREEN_SET_UC)
 		{
-			if (setValue < 5001)	// 5 kV limit
+			//if (setValue < 5001)	// 5 kV limit
+			if ((setValue > -5001) && (setValue <= 0))
 				localRef.fCathodeVolt = (float)setValue;
 		}
 		else if (actualScreen == SCREEN_SET_UF)

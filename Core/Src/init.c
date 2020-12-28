@@ -12,6 +12,8 @@
 #include "hd44780_i2c.h"
 #include "init.h"
 #include "main.h"
+#include "pid_controller.h"
+#include "regulator.h"
 #include "typedefs.h"
 #include "ui.h"
 #include "utilities.h"
@@ -24,31 +26,41 @@
  */
 void init_user( void )
 {
+	memset(&System, 0x00, sizeof (System));
 
 #ifdef MCU_HIGH
 
-	memset(&System, 0x00, sizeof (System));
 	InitADC();
 
 #else
 	powerLockOn();
 
-	memset(&System, 0x00, sizeof (System));
-
 	// output PWM
-	pwmSetDuty(PWM_CHANNEL_UK, (1.0/3.3));
+	pwmSetDuty(PWM_CHANNEL_UC, 0.0f);
 	pwmSetDuty(PWM_CHANNEL_UE, 0.0f);
 	pwmSetDuty(PWM_CHANNEL_UF, 0.0f);
 	pwmSetDuty(PWM_CHANNEL_PUMP, 0.0f);
 
-	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);
-	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
-	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
-	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
+	System.ref.fCathodeVolt = -3000.0f;
+
+//	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);
+//	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
+//	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
+//	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
+	HAL_TIMEx_PWMN_Start(&htim1, PWM_CHANNEL_UC);
+	HAL_TIM_PWM_Start(&htim1, PWM_CHANNEL_UE);
+	HAL_TIM_PWM_Start(&htim1, PWM_CHANNEL_UF);
+	HAL_TIM_PWM_Start(&htim1, PWM_CHANNEL_PUMP);
+
+	// PID regulator - init when High Side MCU 'll be running
+//	regulatorInit();
+//	PIDSetpointSet(&pidUc, 0.0f);
+//	PIDSetpointSet(&pidUe, 0.0f);
+//	PIDSetpointSet(&pidUf, 0.0f);
+//	HAL_TIM_Base_Start_IT(&htim6);
 
 	// display module
 	HAL_StatusTypeDef i2cStatus = HAL_I2C_IsDeviceReady(&hi2c1, PCF8574_ADDR_WRITE, 3, 100);
-
 	if (i2cStatus == HAL_OK)
 	{
 		SPAM(("I2C_ready\n"));

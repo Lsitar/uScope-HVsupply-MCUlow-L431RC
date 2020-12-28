@@ -59,7 +59,7 @@ extern "C"
 
 typedef enum
 {
-    MANUAL,
+    MANUAL,		// 0 -default
     AUTOMATIC
 }
 PIDMode;
@@ -309,6 +309,7 @@ extern void PIDSampleTimeSet(PIDControl *pid, float sampleTimeSeconds);
 // Returns:
 //      Nothing.
 // 
+static
 inline void 
 PIDSetpointSet(PIDControl *pid, float setpoint) { pid->setpoint = setpoint; }
 
@@ -323,6 +324,7 @@ PIDSetpointSet(PIDControl *pid, float setpoint) { pid->setpoint = setpoint; }
 // Returns:
 //      Nothing.
 // 
+static
 inline void 
 PIDInputSet(PIDControl *pid, float input) { pid->input = input; }
 
@@ -336,6 +338,7 @@ PIDInputSet(PIDControl *pid, float input) { pid->input = input; }
 // Returns:
 //      The output of the specific PID controller.
 // 
+static
 inline float 
 PIDOutputGet(PIDControl *pid) { return pid->output; }
 
