@@ -61,6 +61,10 @@ void init_user( void )
 //	PIDSetpointSet(&pidUf, 0.0f);
 //	HAL_TIM_Base_Start_IT(&htim6);
 
+#ifdef CUSTOM_RX
+//	uartCustomRxInit();	// this not now, but at High side start
+#endif
+
 	// display module
 	HAL_StatusTypeDef i2cStatus = HAL_I2C_IsDeviceReady(&hi2c1, PCF8574_ADDR_WRITE, 3, 100);
 	if (i2cStatus == HAL_OK)

@@ -467,6 +467,10 @@ void readKeyboard(void)
 				else
 				{	// settings confirmed
 					memcpy(&System.ref, &localRef, sizeof(System.ref));
+					// TODO TEMP set output manually
+					pwmSetVoltManual(PWM_CHANNEL_UE, System.ref.fPumpVolt);
+					pwmSetVoltManual(PWM_CHANNEL_UF, System.ref.fFocusVolt);
+					// end TEMP
 					uiScreenChange(SCREEN_1);
 				}
 			}
@@ -531,20 +535,22 @@ void readKeyboard(void)
 			{
 				if (HAL_GPIO_ReadPin(TP32_GPIO_Port, TP32_Pin) == GPIO_PIN_RESET)
 				{
-					System.bHighSideShutdown = false;
-					powerHVon();
-					// TODO wait for proper Rx signal from MCU high
-					regulatorInit();
-					uartReceiveFrameIT();
-					//System.bHighSideOk = true;
+//					System.bHighSideShutdown = false;
+//					powerHVon();
+//					// TODO wait for proper Rx signal from MCU high
+//					regulatorInit();
+//					uartReceiveFrameIT();
+//					//System.bHighSideOk = true;
+					highSideStart();
 				}
 				else
 				{
-					System.bHighSideShutdown = true;
-					System.bHighSideOk = false;
-					HAL_UART_AbortReceive_IT(&huart1);	// returns always HAL_OK
-					// TODO discharge & shutdown HV before disabling 12 V
-					powerHVoff();
+//					System.bHighSideShutdown = true;
+//					System.bHighSideOk = false;
+//					HAL_UART_AbortReceive_IT(&huart1);	// returns always HAL_OK
+//					// TODO discharge & shutdown HV before disabling 12 V
+//					powerHVoff();
+					highSideShutdown();
 				}
 			}
 		}

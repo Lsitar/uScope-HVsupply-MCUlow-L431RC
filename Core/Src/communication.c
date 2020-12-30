@@ -14,8 +14,6 @@
 
 /* Private variables ---------------------------------------------------------*/
 
-static const uint32_t password = 0xC0CAC01A;
-
 static bool bIdle = true;
 
 static uint32_t cntTriggered = 0;
@@ -28,45 +26,70 @@ union uCommFrame commFrame;
 
 /* Private functions ---------------------------------------------------------*/
 
-static inline void _swapByteOrder(uint8_t *buff, uint8_t len)
-{
-	uint8_t temp[len];
-
-	for (uint32_t i=0; i<len; i++)
-	{
-		temp[len - i - 1] = buff[i];
-	}
-
-	memcpy(buff, temp, len);
-}
+//static inline void _swapByteOrder(uint8_t *buff, uint8_t len)
+//{
+//	uint8_t temp[len];
+//
+//	for (uint32_t i=0; i<len; i++)
+//	{
+//		temp[len - i - 1] = buff[i];
+//	}
+//
+//	memcpy(buff, temp, len);
+//}
 
 /* Exported functions --------------------------------------------------------*/
 
+uint8_t crc8(const uint8_t *data, uint32_t length)
+{
+	uint8_t crc = 0x00;
+	uint8_t extract;
+	uint8_t sum;
+
+	for(uint32_t i=0; i<length; i++)
+	{
+		extract = *data;
+		for (uint32_t tempI = 8; tempI; tempI--)
+		{
+			sum = (crc ^ extract) & 0x01;
+			crc >>= 1;
+			if (sum)
+				crc ^= 0x8C;
+			extract >>= 1;
+		}
+		data++;
+	}
+	return crc;
+}
+
+
+
 void sendResults(void)
 {
+	UNUSED(cntTriggered);
+#ifdef MCU_HIGH
 	HAL_StatusTypeDef retVal;
 
 	bIdle = false;
-	// Password is not for error checking, but for frame begin marker
-//	memcpy(&commFrame.data.password, &password, sizeof (uint32_t));
-//	memcpy(&commFrame.data.fExtVolt, &System.meas.fExtractVolt, sizeof (float));
-//	memcpy(&commFrame.data.fFocusVolt, &System.meas.fFocusVolt, sizeof (float));
-	commFrame.data.password = password;
-	commFrame.data.fExtVolt = System.meas.fExtractVolt;
-	commFrame.data.fFocusVolt = System.meas.fFocusVolt;
-	_swapByteOrder(commFrame.uartRxBuff, sizeof(struct sCommFrame));
+	commFrame.data.values.fExtVolt = System.meas.fExtractVolt;
+	commFrame.data.values.fFocusVolt = System.meas.fFocusVolt;
+	commFrame.data.values.crc8 = crc8(commFrame.uartRxBuff, 2*sizeof(float));
 
-	retVal = HAL_UART_Transmit_IT(&huart1, commFrame.uartRxBuff, sizeof (struct sCommFrame));
+	retVal = HAL_UART_Transmit_IT(&huart1, commFrame.uartRxBuff, sizeof(commFrame.data.values));
 	if (retVal != HAL_OK)
 	{
-		ledOrange(ON);
+		ledRed(ON);
 	}
 	else
 	{
 		cntTriggered++;
-		ledOrange(OFF);
+		ledRed(OFF);
 	}
 //	if (cntTriggered % 100 == 0) SPAM(("Triggered: %u\n", cntTriggered));
+#else
+	SPAM(("MCU low %s!\n", __func__));
+#endif
+	return;
 }
 
 
@@ -84,85 +107,172 @@ void uartReceiveFrameIT(void)
 	}
 }
 
+#ifdef CUSTOM_RX
+/*
+ * Set necessary interrupts etc.
+ */
+void uartCustomRxInit(void)
+{
+	CLEAR_BIT(USART1->CR1, USART_CR1_UE);		// uart disable
+
+	/* CR1 */
+	CLEAR_BIT(USART1->CR1, USART_CR1_TE);		// transmitter disable
+	CLEAR_BIT(USART1->CR1, USART_CR1_CMIE);		// character match interrupt disable
+	CLEAR_BIT(USART1->CR1, USART_CR1_TXEIE);	// transmit interrupt disable
+	CLEAR_BIT(USART1->CR1, USART_CR1_TCIE);		// transmission complete interrupt disable
+
+	SET_BIT(USART1->CR1, USART_CR1_RXNEIE);		// Rx interrupt enable
+	SET_BIT(USART1->CR1, USART_CR1_PEIE);		// parity error interrupt enable
+	SET_BIT(USART1->CR1, USART_CR1_IDLEIE);		// Idle interrupt enable
+
+	/* CR2 */
+	CLEAR_BIT(USART1->CR2, USART_CR2_RTOEN);	// Rx timeout disable
+	/* CR3 */
+	CLEAR_BIT(USART1->CR3, USART_CR3_EIE);		// error interrupt disable (noise, frame, overrun)
+
+	// clear interrupt flags
+	USART1->ICR = USART_ICR_PECF + USART_ICR_FECF + USART_ICR_NECF + 		\
+				USART_ICR_ORECF + USART_ICR_IDLECF + USART_ICR_TCCF + 		\
+				USART_ICR_TCBGTCF + USART_ICR_LBDCF + USART_ICR_CTSCF + 	\
+				USART_ICR_RTOCF + USART_ICR_EOBCF + USART_ICR_CMCF + USART_ICR_WUCF;
+
+	SET_BIT(USART1->CR1, USART_CR1_UE);			// uart enable
+}
+
+
+
+void uartCustomRxTrigger(void)
+{
+	SET_BIT(USART1->CR1, USART_CR1_RE);	// enable Rx - begins to search start bit
+}
+
+
+
+void uartCustomIrqHandler(void)
+{
+	static uint32_t rxIndex = 0;
+
+	uint32_t flags = USART1->ISR;
+
+	// check & clear errors
+	if (flags & (USART_ISR_PE + USART_ISR_FE + USART_ISR_NE + USART_ISR_ORE))
+	{
+		if (flags & USART_ISR_PE)
+		{	// parity error
+			USART1->ICR = USART_ICR_PECF;
+			commFrame.data.bErrParity = true;
+		}
+		if (flags & USART_ISR_FE)
+		{	// frame error
+			USART1->ICR = USART_ICR_FECF;
+			commFrame.data.bErrFrame = true;
+		}
+		if (flags & USART_ISR_NE)
+		{	// noise error (NF bit)
+			USART1->ICR |= USART_ICR_NCF;
+			commFrame.data.bErrNoise = true;
+		}
+		if (flags & USART_ISR_ORE)
+		{	// overrun error
+			USART1->ICR |= USART_ICR_ORECF;
+			commFrame.data.bErrOverrun = true;
+		}
+	}
+
+	// read data
+	if (flags & USART_ISR_RXNE)
+	{
+		// copy to buffer or flush when reached limit
+		if (rxIndex < sizeof(union uCommFrame))
+			commFrame.uartRxBuff[rxIndex++] = USART1->RDR;
+		else
+			USART1->RQR |= USART_RQR_RXFRQ;
+	}
+	// decode data
+	if (flags & USART_ISR_IDLE)
+	{	// struct received
+		HAL_UART_RxCpltCallback(&huart1);
+		rxIndex = 0;			// reset buffer index after buffer is processed
+		memset(&commFrame, 0x00, sizeof (union uCommFrame)); // reset data & flags
+		USART1->ICR |= USART_ICR_IDLECF;
+		uartCustomRxTrigger();
+	}
+
+}
+#endif // CUSTOM_RX
+
 
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
+	UNUSED(huart);
+	UNUSED(cntSent);
 #ifdef MCU_HIGH
-	static uint32_t uTimeTick;
-
-	if (HAL_GetTick() - uTimeTick > 100)
-	{
-		uTimeTick = HAL_GetTick();
-		ledGreen(TOGGLE);
-	}
-
 	cntSent++;
-
 //	if (cntSent % 100 == 0) SPAM(("Sent: %u\n", cntSent));
 
-	UNUSED(huart);
+	ledGreen(BLINK);
+
 	bIdle = true;
 #else // MCU_LOW
 	SPAM(("MCU low Tx!\n"));
-	return;
 #endif
+	return;
 }
 
 
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
+	UNUSED(cntReceived);
 #ifdef MCU_HIGH
-	SPAM(("MCU high Rx!\n"));
+	SPAM(("err: MCU high Rx!\n"));
 	return;
 #else // MCU_LOW
-	static uint32_t uTimeTick;
-
-	if (HAL_GetTick() - uTimeTick > 100)
-	{
-		uTimeTick = HAL_GetTick();
-		ledGreen(TOGGLE);
-	}
-
 	cntReceived++;
 
-	if (cntReceived > 0 && (cntReceived % 2) == 0 )
-		__NOP();
+	ledGreen(BLINK);
 
-	if (commFrame.data.password != password)
+	// check frame errors
+	if (commFrame.data.bErrFrame || commFrame.data.bErrNoise || commFrame.data.bErrOverrun || commFrame.data.bErrParity)
+	{
+		SPAM(("uart err: "));
+		if (commFrame.data.bErrParity)
+			SPAM(("parity, "));
+		if (commFrame.data.bErrFrame)
+			SPAM(("frame, "));
+		if (commFrame.data.bErrNoise)
+			SPAM(("noise, "));
+		if (commFrame.data.bErrOverrun)
+			SPAM(("overrun, "));
+		SPAM((".\n"));
+	}
+
+	if (commFrame.data.values.crc8 != crc8(commFrame.uartRxBuff, 2*sizeof(float)))
 	{
 		ledRed(ON);
-//		ITM_SendChar('x');
+		//ITM_SendChar('x'); ITM_SendChar('\n');
 	}
 	else
 	{
 		ledRed(OFF);
-//		ITM_SendChar('y');
+		memcpy(&System.meas.fExtractVolt, &commFrame.data.values.fExtVolt, sizeof(float));
+		memcpy(&System.meas.fFocusVolt, &commFrame.data.values.fFocusVolt, sizeof(float));
 	}
-//	ITM_SendChar('\n');
 
-	memcpy(&System.meas.fExtractVolt, &commFrame.data.fExtVolt, sizeof(float));
-	memcpy(&System.meas.fFocusVolt, &commFrame.data.fFocusVolt, sizeof(float));
-
+#ifndef CUSTOM_RX
 	// receive next byte
 	uartReceiveFrameIT();
+#endif
 
 #endif // MCU_HIGH
 }
 
 
-//#define  HAL_UART_ERROR_NONE             ((uint32_t)0x00000000U)    /*!< No error                */
-//#define  HAL_UART_ERROR_PE               ((uint32_t)0x00000001U)    /*!< Parity error            */
-//#define  HAL_UART_ERROR_NE               ((uint32_t)0x00000002U)    /*!< Noise error             */
-//#define  HAL_UART_ERROR_FE               ((uint32_t)0x00000004U)    /*!< Frame error             */
-//#define  HAL_UART_ERROR_ORE              ((uint32_t)0x00000008U)    /*!< Overrun error           */
-//#define  HAL_UART_ERROR_DMA              ((uint32_t)0x00000010U)    /*!< DMA transfer error      */
-//#define  HAL_UART_ERROR_RTO              ((uint32_t)0x00000020U)    /*!< Receiver Timeout error  */
-//
-//#if (USE_HAL_UART_REGISTER_CALLBACKS == 1)
-//#define  HAL_UART_ERROR_INVALID_CALLBACK ((uint32_t)0x00000040U)    /*!< Invalid Callback error  */
-//#endif /* USE_HAL_UART_REGISTER_CALLBACKS */
+
+/*
+ * (Not used function.)
+ */
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
 	UNUSED(huart);
@@ -191,6 +301,7 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 		HAL_UART_AbortReceive_IT(&huart1);	// returns always HAL_OK
 	}
 }
+
 
 
 void HAL_UART_AbortCpltCallback(UART_HandleTypeDef *huart)

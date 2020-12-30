@@ -25,6 +25,7 @@
 /* USER CODE BEGIN Includes */
 #include <string.h>
 #include "communication.h"
+#include "regulator.h"
 #include "typedefs.h"
 #include "utilities.h"
 /* USER CODE END Includes */
@@ -317,40 +318,43 @@ void SPI1_IRQHandler(void)
 void USART1_IRQHandler(void)
 {
   /* USER CODE BEGIN USART1_IRQn 0 */
-	__NOP();
-//	ITM_SendChar('U');
-//	ITM_SendChar('\n');
 	static uint32_t cntIrq = 0;
 
 	cntIrq++;
 
-	uint32_t regIsrBefore = USART1->ISR;
+#if defined (CUSTOM_RX) && !defined(MCU_HIGH)
+	uartCustomIrqHandler();
+#else
+
+//	uint32_t regIsrBefore = USART1->ISR;
 
   /* USER CODE END USART1_IRQn 0 */
   HAL_UART_IRQHandler(&huart1);
   /* USER CODE BEGIN USART1_IRQn 1 */
 
-	uint32_t regIsrAfter = USART1->ISR;
+//	uint32_t regIsrAfter = USART1->ISR;
+//
+//	uint32_t regDiff = regIsrBefore ^ regIsrAfter;
+//	uint32_t regNoChange = regIsrBefore & regIsrAfter;
+//
+//	if (regIsrAfter & USART_ISR_PE)
+//		__NOP();	// parity error
+//	if (regIsrAfter & USART_ISR_FE)
+//		USART1->ICR |= USART_ICR_FECF;	//__NOP();	// frame error
+//	if (regIsrAfter & USART_ISR_NE)
+//		USART1->ICR |= USART_ICR_NCF;	//__NOP();	// noise error (NF bit)
+//	if (regIsrAfter & USART_ISR_ORE)
+//		__NOP();	// overrun error
+//	if (regIsrAfter & USART_ISR_RXNE)
+//	{
+//		regDiff = USART1->RDR;	//__NOP();	// Rx not empty error
+//		HAL_UART_AbortReceive_IT(&huart1);
+//	}
+//	if (regIsrAfter & USART_ISR_PE)
+//		__NOP();	// parity error
 
-	uint32_t regDiff = regIsrBefore ^ regIsrAfter;
-	uint32_t regNoChange = regIsrBefore & regIsrAfter;
-
-	if (regIsrAfter & USART_ISR_PE)
-		__NOP();	// parity error
-	if (regIsrAfter & USART_ISR_FE)
-		USART1->ICR |= USART_ICR_FECF;	//__NOP();	// frame error
-	if (regIsrAfter & USART_ISR_NE)
-		USART1->ICR |= USART_ICR_NCF;	//__NOP();	// noise error (NF bit)
-	if (regIsrAfter & USART_ISR_ORE)
-		__NOP();	// overrun error
-	if (regIsrAfter & USART_ISR_RXNE)
-	{
-		regDiff = USART1->RDR;	//__NOP();	// Rx not empty error
-		HAL_UART_AbortReceive_IT(&huart1);
-	}
-	if (regIsrAfter & USART_ISR_PE)
-		__NOP();	// parity error
-
+#endif
+	return;
   /* USER CODE END USART1_IRQn 1 */
 }
 
@@ -372,7 +376,7 @@ void TIM6_DAC_IRQHandler(void)
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-	static uint32_t uTimeTick;
+//	static uint32_t uTimeTick;
 
 	if (GPIO_Pin == ADC_DRDY_EXTI4_Pin)
 	{
@@ -389,11 +393,12 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 #endif
 		}
 
-		if (HAL_GetTick() - uTimeTick > 100)
-		{
-			uTimeTick = HAL_GetTick();
-			ledBlue(TOGGLE);
-		}
+//		if (HAL_GetTick() - uTimeTick > 100)
+//		{
+//			uTimeTick = HAL_GetTick();
+//			ledBlue(TOGGLE);
+//		}
+		ledBlue(BLINK);
 	}
 //	else if (GPIO_Pin == ENC_CHA_EXTI0_Pin)
 //	{
@@ -417,6 +422,14 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 //	adsReadDataITcallback(&System.ads.data);
 //	testpin29(false);
 #endif // MCU_HIGH
+}
+
+
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+	UNUSED(htim);
+	regulatorPeriodCallback();
 }
 
 

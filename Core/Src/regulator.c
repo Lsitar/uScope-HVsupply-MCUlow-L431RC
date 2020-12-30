@@ -53,14 +53,14 @@ void regulatorInit(void)
 			PID_UE_KP,	PID_UE_KI,	PID_UE_KD,
 			PID_PERIOD,
 			PID_OUT_MIN,	PID_OUT_MAX_UE,
-			AUTOMATIC,	// mode
+			MANUAL,	//AUTOMATIC,	// mode
 			DIRECT);	// direction
 
 	PIDInit(&pidUf,
 			PID_UF_KP,	PID_UF_KI,	PID_UF_KD,
 			PID_PERIOD,
 			PID_OUT_MIN,	PID_OUT_MAX_UF,
-			AUTOMATIC,	// mode
+			MANUAL,	//AUTOMATIC,	// mode
 			DIRECT);	// direction
 
 	PIDSetpointSet(&pidUc, System.ref.fCathodeVolt);
@@ -75,7 +75,8 @@ void regulatorInit(void)
 /*
  * every 10 ms
  */
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+//void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+void regulatorPeriodCallback(void)
 {
 	PIDInputSet(&pidUc, System.meas.fCathodeVolt);	// TODO to moze lepiej powiazac jakos z przerwaniem od ADS
 	PIDSetpointSet(&pidUc, System.ref.fCathodeVolt);
@@ -99,8 +100,22 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 
 /*
+ * Manually set duty based on required output voltage.
+ */
+void pwmSetVoltManual(enum ePwmChannel PWM_CHANNEL_, float voltage)
+{
+	const float fGain = (6000.0f/12.0f) * (16300.0f/4300.0f) * 3.3f;
+
+	float duty = voltage / fGain;
+
+	pwmSetDuty(PWM_CHANNEL_, duty);
+}
+
+
+
+/*
  * Used to tune PID regulator (Ziegler-Nichols method).
- * Call after collecting every adc sample.
+ * Call every time after collecting adc sample.
  */
 void pidMeasOscPeriod(void)
 {
@@ -124,11 +139,6 @@ void pidMeasOscPeriod(void)
 				period = 0;
 				index = 0;
 			}
-
-//			period += HAL_GetTick() - uTimetick;
-//			period /= 2;		// moving average of 2 samples
-//			SPAM(("osc: %u\n", period));
-
 			uTimetick = HAL_GetTick();
 		}
 		bLastSlope = true;

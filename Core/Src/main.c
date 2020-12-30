@@ -22,9 +22,11 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "typedefs.h"
+#include "communication.h"
 #include "hd44780_i2c.h"
 #include "init.h"
+#include "regulator.h"
+#include "typedefs.h"
 #include "ui.h"
 #include "utilities.h"
 /* USER CODE END Includes */
@@ -92,7 +94,19 @@ static void MX_USART1_UART_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_TIM6_Init(void);
 /* USER CODE BEGIN PFP */
+static inline void powerHVon (void)
+{
+	SPAM(("%s\n", __func__));
+	ledOrange(ON);
+	HAL_GPIO_WritePinHigh(TP32_GPIO_Port, TP32_Pin);
+}
 
+static inline void powerHVoff (void)
+{
+	SPAM(("%s\n", __func__));
+	ledOrange(OFF);
+	HAL_GPIO_WritePinLow(TP32_GPIO_Port, TP32_Pin);
+}
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -704,10 +718,29 @@ static void MX_GPIO_Init(void)
 
 
 
+void highSideStart(void)
+{
+	System.bHighSideShutdown = false;
+	powerHVon();
+	// TODO wait for proper Rx signal from MCU high
+	regulatorInit();
+#ifdef CUSTOM_RX
+	uartCustomRxInit();
+#else
+	uartReceiveFrameIT();
+#endif
+	//System.bHighSideOk = true;
+}
 
 
-
-
+void highSideShutdown(void)
+{
+	System.bHighSideShutdown = true;
+	System.bHighSideOk = false;
+	HAL_UART_AbortReceive_IT(&huart1);	// returns always HAL_OK
+	// TODO discharge & shutdown HV before disabling 12 V
+	powerHVoff();
+}
 
 
 

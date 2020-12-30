@@ -33,11 +33,6 @@ void delay_us(uint32_t us)
 #pragma GCC pop_options
 
 
-void delay_ms(uint32_t ms)
-{
-	while ( ms-- ) delay_us(1000);
-}
-
 
 void ledDemo(void)
 {

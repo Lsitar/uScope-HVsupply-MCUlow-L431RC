@@ -141,6 +141,10 @@ extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim6;
 extern UART_HandleTypeDef huart1;
 
+// export functions
+void highSideStart(void);
+void highSideShutdown(void);
+
 
 
 #define HALT_IF_DEBUGGING()										\

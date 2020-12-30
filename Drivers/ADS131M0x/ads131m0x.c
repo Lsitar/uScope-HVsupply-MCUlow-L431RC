@@ -33,6 +33,7 @@
 
 #include <string.h>
 #include "ads131m0x.h"
+#include "communication.h"
 #include "regulator.h"	// pid tuning
 #include "stm32l4xx_hal.h"
 #include "typedefs.h"
