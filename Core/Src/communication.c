@@ -251,6 +251,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	if (commFrame.data.values.crc8 != crc8(commFrame.uartRxBuff, 2*sizeof(float)))
 	{
 		ledRed(ON);
+		System.bCommunicationOk = false;
 		//ITM_SendChar('x'); ITM_SendChar('\n');
 	}
 	else
@@ -258,6 +259,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		ledRed(OFF);
 		memcpy(&System.meas.fExtractVolt, &commFrame.data.values.fExtVolt, sizeof(float));
 		memcpy(&System.meas.fFocusVolt, &commFrame.data.values.fFocusVolt, sizeof(float));
+		System.bCommunicationOk = true;
 	}
 
 #ifndef CUSTOM_RX

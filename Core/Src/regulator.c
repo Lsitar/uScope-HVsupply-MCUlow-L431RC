@@ -16,25 +16,34 @@
 
 /* Kp (0.0001f) gives stable, but 50% of value set
  * Kp (0.001f) gives oscillations, 2800-3900 V (4 kV set), SW meas 50 ms period.
- * Ku = (0.00045f), Tu = 0.05 s
+ * Oscilations depends on load and voltage set, also the period.
+ *
+ * Ku = (0.00045f), Tu = 0.05 s - without load, 3.0 kV
  * Calculate for PI regulator:
  * Kp = Ku * 0.45 = (0.00002025f)
  * Ti = Tu * 0.8 = (0.040f) -> Ki = 0.54 * (0.00045f)/(0.050f) = (0.009f)
- * PI works fine, fast, no visible overshoot!
+ * PI works fine, fast, no visible overshoot, but only without load!
+ *
+ * With load 12 MOhm, ca 800 V out:
+ * Ku = (0.00030f), Tu = 138 ms --> Kp = (0.000135f), Ki = (0.001174f)
+ *
+ * (gain changed after calibration and caused unstability)
+ * With load 12||10 MOhm, ca 800 V out:
+ * Ku = (0.00038f), Tu = 98 ms --> Kp = 0.000171, Ki = 0.0020938
  *
  */
-#define PID_UK_KP	(0.00002025f)
-#define PID_UK_KI	(0.009f)	//(0.0108f)	//(0.0001f)
+#define PID_UK_KP	(0.000171)
+#define PID_UK_KI	(0.0020938f)	//(0.0108f)	//(0.0001f)
 #define PID_UK_KD	(0.0f)
 #define PID_OUT_MAX_UC	(0.9f)
 
-#define PID_UE_KP	(0.01f)
-#define PID_UE_KI	(0.01f)
+#define PID_UE_KP	(0.00001f)
+#define PID_UE_KI	(0.0f)
 #define PID_UE_KD	(0.0f)
 #define PID_OUT_MAX_UE	(0.5f)
 
-#define PID_UF_KP	(0.01f)
-#define PID_UF_KI	(0.01f)
+#define PID_UF_KP	(0.00001f)
+#define PID_UF_KI	(0.0f)
 #define PID_UF_KD	(0.0f)
 #define PID_OUT_MAX_UF	(0.9f)
 
@@ -53,14 +62,14 @@ void regulatorInit(void)
 			PID_UE_KP,	PID_UE_KI,	PID_UE_KD,
 			PID_PERIOD,
 			PID_OUT_MIN,	PID_OUT_MAX_UE,
-			MANUAL,	//AUTOMATIC,	// mode
+			AUTOMATIC,	// mode
 			DIRECT);	// direction
 
 	PIDInit(&pidUf,
 			PID_UF_KP,	PID_UF_KI,	PID_UF_KD,
 			PID_PERIOD,
 			PID_OUT_MIN,	PID_OUT_MAX_UF,
-			MANUAL,	//AUTOMATIC,	// mode
+			AUTOMATIC,	// mode
 			DIRECT);	// direction
 
 	PIDSetpointSet(&pidUc, System.ref.fCathodeVolt);
@@ -70,6 +79,15 @@ void regulatorInit(void)
 	HAL_TIM_Base_Start_IT(&htim6);
 }
 
+
+
+void regulatorDeInit(void)
+{
+	PIDModeSet(&pidUc, MANUAL);
+	PIDModeSet(&pidUe, MANUAL);
+	PIDModeSet(&pidUf, MANUAL);
+	HAL_TIM_Base_Stop_IT(&htim6);
+}
 
 
 /*
@@ -83,7 +101,8 @@ void regulatorPeriodCallback(void)
 	PIDCompute(&pidUc);
 	pwmSetDuty(PWM_CHANNEL_UC, PIDOutputGet(&pidUc));
 
-	if (System.bHighSideOk == true)
+	// Run regulator only, when there are valid samples from High side. Else, stay on previous value.
+	if (System.bCommunicationOk == true)
 	{
 		PIDInputSet(&pidUe, System.meas.fExtractVolt);
 		PIDSetpointSet(&pidUe, System.ref.fExtractVolt);

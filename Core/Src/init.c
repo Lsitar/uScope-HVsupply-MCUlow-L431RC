@@ -28,6 +28,8 @@ void init_user( void )
 {
 	memset(&System, 0x00, sizeof (System));
 
+	initCoefficients();
+
 #ifdef MCU_HIGH
 
 	InitADC();
@@ -36,8 +38,8 @@ void init_user( void )
 	powerLockOn();
 
 	System.bHighSideShutdown = true;
-	System.bHighSideOk = false;
-	System.ref.fCathodeVolt = -3000.0f;
+	System.bCommunicationOk = false;
+	System.ref.fCathodeVolt = -900.0f;
 
 	// output PWM
 	pwmSetDuty(PWM_CHANNEL_UC, 0.0f);
@@ -45,10 +47,6 @@ void init_user( void )
 	pwmSetDuty(PWM_CHANNEL_UF, 0.0f);
 	pwmSetDuty(PWM_CHANNEL_PUMP, 0.0f);
 
-//	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);
-//	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
-//	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
-//	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
 	HAL_TIMEx_PWMN_Start(&htim1, PWM_CHANNEL_UC);
 	HAL_TIM_PWM_Start(&htim1, PWM_CHANNEL_UE);
 	HAL_TIM_PWM_Start(&htim1, PWM_CHANNEL_UF);

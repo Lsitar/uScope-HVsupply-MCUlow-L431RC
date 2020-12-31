@@ -24,6 +24,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <string.h>
+#include "calibration.h"
 #include "communication.h"
 #include "regulator.h"
 #include "typedefs.h"
@@ -212,14 +213,6 @@ void SysTick_Handler(void)
 void EXTI0_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI0_IRQn 0 */
-	if(__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_0) != 0x00u)
-	{
-		testpin29(true);
-		encoderKnob_turnCallback();
-		testpin29(false);
-		__HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_0);
-	}
-	return;
 
   /* USER CODE END EXTI0_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_0);
@@ -376,8 +369,6 @@ void TIM6_DAC_IRQHandler(void)
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-//	static uint32_t uTimeTick;
-
 	if (GPIO_Pin == ADC_DRDY_EXTI4_Pin)
 	{
 		if (System.ads.ready == true)
@@ -391,19 +382,16 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 //			adsReadDataIT();
 //			testpin29(false);
 #endif
+			//calibOffset();
+			calcualteSamples();
 		}
 
-//		if (HAL_GetTick() - uTimeTick > 100)
-//		{
-//			uTimeTick = HAL_GetTick();
-//			ledBlue(TOGGLE);
-//		}
 		ledBlue(BLINK);
 	}
-//	else if (GPIO_Pin == ENC_CHA_EXTI0_Pin)
-//	{
-//		encoderKnob_turnCallback();
-//	}
+	else if (GPIO_Pin == ENC_CHA_EXTI0_Pin)
+	{
+		encoderKnob_turnCallback();
+	}
 	else if (GPIO_Pin == ENC_SW_Pin)
 	{
 		encoderKnob_buttonCallback();

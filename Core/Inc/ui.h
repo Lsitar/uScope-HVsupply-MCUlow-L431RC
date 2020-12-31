@@ -11,7 +11,6 @@
 extern "C" {
 #endif
 
-#include "printf.h"
 #include "hd44780_i2c.h"
 
 enum eScreen

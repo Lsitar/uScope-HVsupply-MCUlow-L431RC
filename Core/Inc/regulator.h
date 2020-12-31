@@ -55,6 +55,7 @@ static inline void pwmSetDuty(enum ePwmChannel PWM_CHANNEL_, float duty)
 /* Exported functions --------------------------------------------------------*/
 
 void regulatorInit(void);
+void regulatorDeInit(void);
 void regulatorPeriodCallback(void);
 void pwmSetVoltManual(enum ePwmChannel PWM_CHANNEL_, float voltage);
 

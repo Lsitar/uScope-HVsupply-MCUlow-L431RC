@@ -94,14 +94,14 @@ static void MX_USART1_UART_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_TIM6_Init(void);
 /* USER CODE BEGIN PFP */
-static inline void powerHVon (void)
+static inline void power12Von (void)
 {
 	SPAM(("%s\n", __func__));
 	ledOrange(ON);
 	HAL_GPIO_WritePinHigh(TP32_GPIO_Port, TP32_Pin);
 }
 
-static inline void powerHVoff (void)
+static inline void power12Voff (void)
 {
 	SPAM(("%s\n", __func__));
 	ledOrange(OFF);
@@ -721,25 +721,29 @@ static void MX_GPIO_Init(void)
 void highSideStart(void)
 {
 	System.bHighSideShutdown = false;
-	powerHVon();
-	// TODO wait for proper Rx signal from MCU high
-	regulatorInit();
+	power12Von();
 #ifdef CUSTOM_RX
 	uartCustomRxInit();
 #else
 	uartReceiveFrameIT();
 #endif
-	//System.bHighSideOk = true;
+	regulatorInit();
+//	System.bCommunicationOk = true;
 }
 
 
 void highSideShutdown(void)
 {
-	System.bHighSideShutdown = true;
-	System.bHighSideOk = false;
-	HAL_UART_AbortReceive_IT(&huart1);	// returns always HAL_OK
 	// TODO discharge & shutdown HV before disabling 12 V
-	powerHVoff();
+	System.bHighSideShutdown = true;
+
+	power12Voff();
+	HAL_UART_AbortReceive_IT(&huart1);	// returns always HAL_OK
+	CLEAR_BIT(USART1->CR1, USART_CR1_UE);		// uart disable
+	System.bCommunicationOk = false;
+	regulatorDeInit();
+	ledRed(OFF);
+	ledGreen(OFF);
 }
 
 

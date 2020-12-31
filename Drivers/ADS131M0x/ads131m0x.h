@@ -44,6 +44,7 @@
 // Custom libraries
 #include "hal.h"
 
+//void calcualteSamples(void);
 
 //****************************************************************************
 //

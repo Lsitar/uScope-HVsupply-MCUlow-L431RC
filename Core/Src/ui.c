@@ -9,6 +9,7 @@
 #include "main.h"
 #include "math.h"
 //#include "pid_controller.h"
+#include "printf.h"
 #include "regulator.h"
 #include "typedefs.h"
 #include "ui.h"
@@ -154,17 +155,17 @@ static int32_t _printVoltage(float voltage, char* buff, uint8_t buffSize)
 
 static int32_t _printCurrent(float current, char* buff, uint8_t buffSize)
 {
-	current = fabsf(current * 1000000.0f);
+	current = fabsf(current * 1000000.0f);	// convert to uA
 
 //	if (current < 10.0f)
 //		return snprintf_(buff, buffSize, "%.2f uA", current);
 //	else
 //		return snprintf_(buff, buffSize, "%.1f uA", current);
 
-	if (current < 50.0f)
+	if (current < 49.0f)
 		return snprintf_(buff, buffSize, "%.2f uA", current);
 	else
-		return snprintf_(buff, buffSize, ">50.0 uA", current);
+		return snprintf_(buff, buffSize, ">49.0 uA", current);
 }
 
 
@@ -535,21 +536,10 @@ void readKeyboard(void)
 			{
 				if (HAL_GPIO_ReadPin(TP32_GPIO_Port, TP32_Pin) == GPIO_PIN_RESET)
 				{
-//					System.bHighSideShutdown = false;
-//					powerHVon();
-//					// TODO wait for proper Rx signal from MCU high
-//					regulatorInit();
-//					uartReceiveFrameIT();
-//					//System.bHighSideOk = true;
 					highSideStart();
 				}
 				else
 				{
-//					System.bHighSideShutdown = true;
-//					System.bHighSideOk = false;
-//					HAL_UART_AbortReceive_IT(&huart1);	// returns always HAL_OK
-//					// TODO discharge & shutdown HV before disabling 12 V
-//					powerHVoff();
 					highSideShutdown();
 				}
 			}
