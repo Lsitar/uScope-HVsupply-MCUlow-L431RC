@@ -6,6 +6,7 @@
  */
 #include <string.h>
 #include "communication.h"
+#include "hd44780_i2c.h"
 #include "main.h"
 #include "math.h"
 //#include "pid_controller.h"
@@ -15,18 +16,20 @@
 #include "ui.h"
 #include "utilities.h"
 
-/* private variables */
+/* Private variables ---------------------------------------------------------*/
 
-static char LCD_buff[20];			// working buffer for snprintf
+static char LCD_buff[20];				// working buffer for snprintf
 static enum eScreen actualScreen;
-static uint32_t uScreenTimer;		// measure time from last screenChange
+static enum eScreen returnScreen;		// save screen to return to - f.ex. from settings
+static enum eScreen settingsScreen;		// save last settings screen - to enter always last setted value
+static uint32_t uScreenTimer;			// measure time from last screenChange
+static bool bBlink;						// helper variable for blinking text on screen
+static int printedCharsLine[4] = {0};	// save number of value digits plotted in each line
+
 static struct sRegulatedVal localRef;	// local copy of values changed at settings
-static bool bBlink;
-static int printedCharsLine[4] = {0};
+static int32_t setDigit = 1;
 
-static uint32_t setDigit = 1;
-
-/* config / constants */
+/* config / constants --------------------------------------------------------*/
 
 #define KB_READ_INTERVAL		50	// ms
 #define KB_PRESSED_THRESHOLD	2	// ticks ca. 100 ms
@@ -34,13 +37,14 @@ static uint32_t setDigit = 1;
 #define LCD_UPDATERATE_MS		333	// 3 Hz
 #define LCD_BLINK_TIME			500	// ms per state
 
-/* macros */
+
 
 #define IS_SETTINGS_SCREEN	(  (actualScreen == SCREEN_SET_UC)   \
 							|| (actualScreen == SCREEN_SET_IA)   \
 							|| (actualScreen == SCREEN_SET_UF)   \
 							|| (actualScreen == SCREEN_SET_UP))  \
 
+/* Private types -------------------------------------------------------------*/
 
 enum eKey
 {
@@ -55,6 +59,7 @@ enum eKey
 
 static uint32_t uKeysPressedTime[KEY_NUMBER_OF] = {0};
 
+/* Private functions ---------------------------------------------------------*/
 
 static void _changeScreenLeftRight(enum eKey key)
 {
@@ -94,8 +99,8 @@ static void _changeScreenLeftRight(enum eKey key)
 			uiScreenChange(SCREEN_SET_UC);
 	}
 
-	if (IS_SETTINGS_SCREEN)
-		setDigit = 1;
+//	if (IS_SETTINGS_SCREEN)
+//		setDigit = 1;
 }
 
 
@@ -157,11 +162,6 @@ static int32_t _printCurrent(float current, char* buff, uint8_t buffSize)
 {
 	current = fabsf(current * 1000000.0f);	// convert to uA
 
-//	if (current < 10.0f)
-//		return snprintf_(buff, buffSize, "%.2f uA", current);
-//	else
-//		return snprintf_(buff, buffSize, "%.1f uA", current);
-
 	if (current < 49.0f)
 		return snprintf_(buff, buffSize, "%.2f uA", current);
 	else
@@ -182,6 +182,31 @@ static int32_t _printPower(float power, char* buff, uint8_t buffSize)
 		return snprintf_(buff, buffSize, "%.0f mW", power);
 }
 
+/* Exported functions --------------------------------------------------------*/
+
+void uiInit(void)
+{
+	// init variables
+	settingsScreen = SCREEN_SET_UC;
+	returnScreen = SCREEN_1;
+
+	// init LCD on I2C interface
+	HAL_StatusTypeDef i2cStatus = HAL_I2C_IsDeviceReady(&hi2c1, PCF8574_ADDR_WRITE, 3, 100);
+	if (i2cStatus == HAL_OK)
+	{
+		SPAM(("I2C_ready\n"));
+		HD44780_Init(20, 4);
+	}
+	else
+	{
+		SPAM(("I2C_LCD_error\n"));
+		ledError(5);
+		powerLockOff();
+		while (0xDEAD);
+	}
+	uiScreenChange(SCREEN_POWERON_1);
+}
+
 
 
 void uiScreenChange(enum eScreen newScreen)
@@ -189,13 +214,11 @@ void uiScreenChange(enum eScreen newScreen)
 	HD44780_Clear();
 
 	memset(printedCharsLine,0x00,sizeof(printedCharsLine));
-//	for (uint32_t i=0; i<sizeof(printedCharsLine); i++)
-//		printedCharsLine[i] = 0;
 
 	switch (newScreen)
 	{
 	case SCREEN_RESET:
-		HAL_Delay(5);	// give some time to send rest from buffer
+		HAL_Delay(10);	// give some time to send rest from buffer
 		HD44780_Init(20, 4);
 		break;
 
@@ -417,9 +440,10 @@ void uiScreenUpdate(void)
 
 
 /*
- * Internal time interval: 50 ms
+ * Call in main loop.
+ * Execution period (KB read) is controlled internally (50 ms period now).
  */
-void readKeyboard(void)
+void keyboardRoutine(void)
 {
 	static uint32_t uTimeTick = 0;
 //	static uint32_t uKeysPressedTime[KEY_NUMBER_OF] = {0};
@@ -443,10 +467,10 @@ void readKeyboard(void)
 			if (uKeysPressedTime[KEY_POWER] > KB_POWEROFF_THRESHOLD)
 			{
 				// TODO shutdown safely: disable HV, wait for Voltmeter readings near 0 V
-				powerLockOff();
+//				powerLockOff();
+				highSideShutdown();
 				HD44780_Clear();
 				HD44780_Puts(5, 2, "Power off");
-				//ledRed(ON);
 				while(0xDEADBABE);
 			}
 		}
@@ -463,16 +487,18 @@ void readKeyboard(void)
 				if (!IS_SETTINGS_SCREEN)
 				{	// goto settings
 					memcpy(&localRef, &System.ref, sizeof(localRef));
-					uiScreenChange(SCREEN_SET_UC);
+					returnScreen = actualScreen;
+					//setDigit = 1;
+					//uiScreenChange(SCREEN_SET_UC);
+					uiScreenChange(settingsScreen);
 				}
 				else
 				{	// settings confirmed
 					memcpy(&System.ref, &localRef, sizeof(System.ref));
-					// TODO TEMP set output manually
-					pwmSetVoltManual(PWM_CHANNEL_UE, System.ref.fPumpVolt);
-					pwmSetVoltManual(PWM_CHANNEL_UF, System.ref.fFocusVolt);
-					// end TEMP
-					uiScreenChange(SCREEN_1);
+					//uiScreenChange(SCREEN_1);
+					settingsScreen = actualScreen;
+					uiScreenChange(returnScreen);
+
 				}
 			}
 		}
@@ -488,7 +514,9 @@ void readKeyboard(void)
 			{
 				if (IS_SETTINGS_SCREEN)
 				{	// settings abandoned
-					uiScreenChange(SCREEN_1);
+					settingsScreen = actualScreen;
+					uiScreenChange(returnScreen);
+					//uiScreenChange(SCREEN_1);
 				}
 				else
 				{	// reset HD44780 controller
@@ -641,27 +669,33 @@ void encoderKnob_buttonCallback(void)
 	if (HAL_GPIO_ReadPin(ENC_SW_GPIO_Port, ENC_SW_Pin) == GPIO_PIN_SET)
 	{
 //		SPAM(("Enc released\n"));
-		// increase digit position
-		setDigit *= 10;
+		uKeysPressedTime[KEY_ENC] = 0;	// disable incrementing in keyboard routine
 
-		// wrap digit position (depends on screen)
-		if (actualScreen == SCREEN_SET_IA)
+		if (IS_SETTINGS_SCREEN)
 		{
-			if (setDigit > 100)	// 10 uA resolution
-				setDigit = 1;	// 0.1 uA resolution
+			// increase digit position
+			setDigit *= 10;
+
+			// wrap digit position (depends on screen)
+			if (actualScreen == SCREEN_SET_IA)
+			{
+				if (setDigit > 100)	// 10 uA resolution
+					setDigit = 1;	// 0.1 uA resolution
+			}
+			else if (  (actualScreen == SCREEN_SET_UC)
+					|| (actualScreen == SCREEN_SET_UF)
+					|| (actualScreen == SCREEN_SET_UP) )
+			{
+				if (setDigit > 1000)	// 1000 V resolution
+					setDigit = 1;	// 1 V resolution
+			}
 		}
-		else if (  (actualScreen == SCREEN_SET_UC)
-				|| (actualScreen == SCREEN_SET_UF)
-				|| (actualScreen == SCREEN_SET_UP) )
-		{
-			if (setDigit > 1000)	// 1000 V resolution
-				setDigit = 1;	// 1 V resolution
-		}
-		uKeysPressedTime[KEY_ENC] = 0;
 	}
 	else
 	{
 //		SPAM(("Enc pressed\n"));
+		// Just init the variable and the rest will be done in keyboard routine
+		// as long as key is pressed.
 		uKeysPressedTime[KEY_ENC] = 1;
 	}
 }

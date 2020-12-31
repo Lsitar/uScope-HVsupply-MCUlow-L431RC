@@ -122,10 +122,6 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 
-	uint32_t cnt = 0;
-	UNUSED(cnt);
-	uint32_t uTimeTick;
-	UNUSED(uTimeTick);
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -141,7 +137,11 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-  SPAM(("Hello world\n"));
+#ifdef MCU_HIGH
+  SPAM(("MCU_HIGH - Hello world\n"));
+#else
+  SPAM(("MCU_LOW - Hello world\n"));
+#endif
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -171,16 +171,8 @@ int main(void)
 		  InitADC();
 	  }
 #else
-	  readKeyboard();
-	  //ledDemo();
+	  keyboardRoutine();
 
-//	  if (HAL_GetTick() - uTimeTick > 2000)
-//	  {
-//		  uTimeTick = HAL_GetTick();
-//		  SPAM(("%i\t%i\n", System.ads.data.channel0, System.ads.data.channel1));
-//	  }
-
-//	  HD44780_demo();
 	  uiScreenUpdate();
 
 	  if (System.ads.error)

@@ -11,10 +11,13 @@
 #include "typedefs.h"
 #include "utilities.h"
 
+/* Private defines -----------------------------------------------------------*/
+
 #define PID_PERIOD	(0.01f)		// 10 ms
 #define PID_OUT_MIN	(0.0f)
 
-/* Kp (0.0001f) gives stable, but 50% of value set
+/* **** U cathode regulator tuning *********************************************
+ * Kp (0.0001f) gives stable, but 50% of value set
  * Kp (0.001f) gives oscillations, 2800-3900 V (4 kV set), SW meas 50 ms period.
  * Oscilations depends on load and voltage set, also the period.
  *
@@ -30,29 +33,44 @@
  * (gain changed after calibration and caused unstability)
  * With load 12||10 MOhm, ca 800 V out:
  * Ku = (0.00038f), Tu = 98 ms --> Kp = 0.000171, Ki = 0.0020938
- *
  */
-#define PID_UK_KP	(0.000171)
-#define PID_UK_KI	(0.0020938f)	//(0.0108f)	//(0.0001f)
-#define PID_UK_KD	(0.0f)
+#define PID_UC_KP	(0.000171)
+#define PID_UC_KI	(0.0020938f)
+#define PID_UC_KD	(0.0f)
 #define PID_OUT_MAX_UC	(0.9f)
 
-#define PID_UE_KP	(0.00001f)
-#define PID_UE_KI	(0.0f)
+/* **** U extract regulator tuning *********************************************
+ * Voltmeter calibrated first. Load 12 MOhm.
+ * Ku = (0.0003f), osc 160 ms at 1600 V set (barely triggered)
+ *
+ * Ku = (0.0003f), Tu = 160 ms --> Kp = (0.000135f), Ki = (0.0010125f)
+ */
+#define PID_UE_KP	(0.000135f)
+#define PID_UE_KI	(0.0010125f)
 #define PID_UE_KD	(0.0f)
-#define PID_OUT_MAX_UE	(0.5f)
+#define PID_OUT_MAX_UE	(0.5f)	// max 3 kV
 
-#define PID_UF_KP	(0.00001f)
-#define PID_UF_KI	(0.0f)
+/* **** U focus regulator tuning *********************************************
+ * Voltmeter calibrated first. Load 12 MOhm.
+ * Ku = (0.00035f), osc -- ms cannot trigger
+ * Ku = (0.000375f), osc 70 ms at 3100 V set (fading oscillations)
+ * Ku = (0.0004f), osc 76 ms at 3100 V set (still oscillations)
+ *
+ * Ku = (0.00038f), Tu = 76 ms --> Kp = (0.00017f), Ki = (0.0027f)
+ */
+#define PID_UF_KP	(0.00017f)
+#define PID_UF_KI	(0.0027f)
 #define PID_UF_KD	(0.0f)
-#define PID_OUT_MAX_UF	(0.9f)
+#define PID_OUT_MAX_UF	(0.9f)	// same as for Uc
 
 PIDControl pidUc, pidUe, pidUf;
+
+/* Exported functions --------------------------------------------------------*/
 
 void regulatorInit(void)
 {
 	PIDInit(&pidUc,
-			PID_UK_KP,	PID_UK_KI,	PID_UK_KD,
+			PID_UC_KP,	PID_UC_KI,	PID_UC_KD,
 			PID_PERIOD,
 			PID_OUT_MIN,	PID_OUT_MAX_UC,
 			AUTOMATIC,	// mode
@@ -91,9 +109,8 @@ void regulatorDeInit(void)
 
 
 /*
- * every 10 ms
+ * Call every PID_PERIOD s
  */
-//void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 void regulatorPeriodCallback(void)
 {
 	PIDInputSet(&pidUc, System.meas.fCathodeVolt);	// TODO to moze lepiej powiazac jakos z przerwaniem od ADS
@@ -105,7 +122,8 @@ void regulatorPeriodCallback(void)
 	if (System.bCommunicationOk == true)
 	{
 		PIDInputSet(&pidUe, System.meas.fExtractVolt);
-		PIDSetpointSet(&pidUe, System.ref.fExtractVolt);
+//		PIDSetpointSet(&pidUe, System.ref.fExtractVolt);
+		PIDSetpointSet(&pidUe, System.ref.fPumpVolt);	// for PID tuning
 		PIDCompute(&pidUe);
 		pwmSetDuty(PWM_CHANNEL_UE, PIDOutputGet(&pidUe));
 
@@ -113,6 +131,12 @@ void regulatorPeriodCallback(void)
 		PIDSetpointSet(&pidUf, System.ref.fFocusVolt);
 		PIDCompute(&pidUf);
 		pwmSetDuty(PWM_CHANNEL_UF, PIDOutputGet(&pidUf));
+		// for offset calibration
+//		pwmSetDuty(PWM_CHANNEL_UE, 0.0f);
+//		pwmSetDuty(PWM_CHANNEL_UF, 0.0f);
+		// for gain calibration
+//		pwmSetVoltManual(PWM_CHANNEL_UE, System.ref.fPumpVolt);
+//		pwmSetVoltManual(PWM_CHANNEL_UF, System.ref.fFocusVolt);
 	}
 }
 
@@ -136,7 +160,7 @@ void pwmSetVoltManual(enum ePwmChannel PWM_CHANNEL_, float voltage)
  * Used to tune PID regulator (Ziegler-Nichols method).
  * Call every time after collecting adc sample.
  */
-void pidMeasOscPeriod(void)
+void pidMeasOscPeriod(enum ePwmChannel PWM_CHANNEL_)
 {
 	static uint32_t uTimetick;
 	static float fLastSample;
@@ -145,8 +169,19 @@ void pidMeasOscPeriod(void)
 	static uint32_t index = 0;
 	const uint32_t samplesNo = 10;
 	// measure period between rising slopes
+	float value;
 
-	if (System.meas.fCathodeVolt - fLastSample > 0.0f)
+	if (PWM_CHANNEL_ == PWM_CHANNEL_UC)
+		value = System.meas.fCathodeVolt;
+	else if (PWM_CHANNEL_ == PWM_CHANNEL_UE)
+		value = System.meas.fExtractVolt;
+	else if (PWM_CHANNEL_ == PWM_CHANNEL_UF)
+		value = System.meas.fFocusVolt;
+	else if (PWM_CHANNEL_ == PWM_CHANNEL_PUMP)
+		value = System.meas.fPumpVolt;
+
+
+	if (value - fLastSample > 0.0f)
 	{	// rising slope
 		if (bLastSlope == false)
 		{
@@ -167,7 +202,7 @@ void pidMeasOscPeriod(void)
 		//if (bLastSlope == true)
 		bLastSlope = false;
 	}
-	fLastSample = System.meas.fCathodeVolt;
+	fLastSample = value;
 }
 
 /************************ (C) COPYRIGHT LSITA ******************END OF FILE****/

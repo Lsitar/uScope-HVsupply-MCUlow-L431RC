@@ -8,6 +8,7 @@
 #include <string.h>	// memset()
 #include <stdbool.h>
 #include "ads131m0x.h"
+#include "calibration.h"
 #include "communication.h"
 #include "hd44780_i2c.h"
 #include "init.h"
@@ -39,7 +40,7 @@ void init_user( void )
 
 	System.bHighSideShutdown = true;
 	System.bCommunicationOk = false;
-	System.ref.fCathodeVolt = -900.0f;
+//	System.ref.fCathodeVolt = -900.0f;
 
 	// output PWM
 	pwmSetDuty(PWM_CHANNEL_UC, 0.0f);
@@ -63,21 +64,23 @@ void init_user( void )
 //	uartCustomRxInit();	// this not now, but at High side start
 #endif
 
-	// display module
-	HAL_StatusTypeDef i2cStatus = HAL_I2C_IsDeviceReady(&hi2c1, PCF8574_ADDR_WRITE, 3, 100);
-	if (i2cStatus == HAL_OK)
-	{
-		SPAM(("I2C_ready\n"));
-		HD44780_Init(20, 4);
-	}
-	else
-	{
-		SPAM(("I2C_LCD_error\n"));
-		ledError(5);
-		powerLockOff();
-		while (0xDEAD);
-	}
-	uiScreenChange(SCREEN_POWERON_1);
+	// display module, screen variables
+	uiInit();
+
+//	HAL_StatusTypeDef i2cStatus = HAL_I2C_IsDeviceReady(&hi2c1, PCF8574_ADDR_WRITE, 3, 100);
+//	if (i2cStatus == HAL_OK)
+//	{
+//		SPAM(("I2C_ready\n"));
+//		HD44780_Init(20, 4);
+//	}
+//	else
+//	{
+//		SPAM(("I2C_LCD_error\n"));
+//		ledError(5);
+//		powerLockOff();
+//		while (0xDEAD);
+//	}
+//	uiScreenChange(SCREEN_POWERON_1);
 
 	InitADC();
 

@@ -9,7 +9,8 @@
 
 /****** Private types & defines ***********************************************/
 
-#define HD44780_BUFF_SIZE	1022	// 1 kB
+//#define HD44780_BUFF_SIZE	1022	// 1 kB
+#define HD44780_BUFF_SIZE	2000	// 2 kB
 
 static struct
 {

@@ -6,6 +6,7 @@
  */
 
 #include "calibration.h"
+#include "communication.h"
 #include "main.h"
 #include "typedefs.h"
 
@@ -36,17 +37,21 @@ tsCoeff fCoeffUp;
 void initCoefficients(void)
 {
 	// load calibration coefficients
+	// MCU_LOW Ch0
+	fCoeffIa.gain = fCoeffIaDefault;
+	fCoeffIa.offset = -37850;
+
+	// MCU_LOW Ch1
 	fCoeffUc.gain = fCoeffUcDefault * (935.0f/900.0f);
 	fCoeffUc.offset = -29325;
 
-	fCoeffUe.gain = fCoeffUeDefault;
-	fCoeffUe.offset = 0;
+	// MCU_HIGH Ch0
+	fCoeffUe.gain = fCoeffUeDefault * (759.6f/735.4f);	// (meas external ref / meas ADS)
+	fCoeffUe.offset = -48034;
 
-	fCoeffUf.gain = fCoeffUfDefault;
-	fCoeffUf.offset = 0;
-
-	fCoeffIa.gain = fCoeffIaDefault;
-	fCoeffIa.offset = -37850;
+	// MCU_HIGH Ch1
+	fCoeffUf.gain = fCoeffUfDefault * (734.0f/708.2f);	// (meas external ref / meas ADS)
+	fCoeffUf.offset = -39380;
 
 	fCoeffUp.gain = fCoeffUpDefault;
 	fCoeffUp.offset = 0;
@@ -60,7 +65,7 @@ void initCoefficients(void)
 void calibOffset(void)
 {
 	static int32_t sumCh0 = 0, sumCh1 = 0;
-	static index = 0;
+	static int32_t index = 0;
 	const int32_t samplesNo = 10000;
 
 	sumCh0 += System.ads.data.channel0;
@@ -72,8 +77,13 @@ void calibOffset(void)
 		__NOP();
 		sumCh0 /= samplesNo;
 		sumCh1 /= samplesNo;
-		SPAM(("Ch0 offset: %i\n", sumCh0));	// MCU_LOW: Ia
-		SPAM(("Ch1 offset: %i\n", sumCh1)); // MCU_LOW: Uc
+#ifdef MCU_HIGH
+		SPAM(("Ue (MCU_HIGH Ch0) offset: %i\n", sumCh0));	// MCU_LOW: Ia, MCU_HIGH: Ue
+		SPAM(("Uf (MCU_HIGH Ch1) offset: %i\n", sumCh1)); // MCU_LOW: Uc, MCU_HIGH: Uf
+#else
+		SPAM(("Ia (MCU_LOW Ch0) offset: %i\n", sumCh0));	// MCU_LOW: Ia, MCU_HIGH: Ue
+		SPAM(("Uc (MCU_LOW Ch1) offset: %i\n", sumCh1)); // MCU_LOW: Uc, MCU_HIGH: Uf
+#endif
 		// reset variables
 		sumCh0 = 0;
 		sumCh1 = 0;

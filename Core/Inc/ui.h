@@ -11,7 +11,7 @@
 extern "C" {
 #endif
 
-#include "hd44780_i2c.h"
+/* Exported types ------------------------------------------------------------*/
 
 enum eScreen
 {
@@ -27,14 +27,10 @@ enum eScreen
 	SCREEN_POWEROFF,
 };
 
+/* Exported functions --------------------------------------------------------*/
 
-struct sMenu
-{
-	uint_least8_t uRowActive;
-};
-
-
-void readKeyboard(void);
+void keyboardRoutine(void);
+void uiInit(void);
 void uiScreenChange(enum eScreen newScreen);
 uint32_t uiGetScreenTime(void);
 void uiScreenUpdate(void);
@@ -46,3 +42,5 @@ void encoderKnob_turnCallback(void);
 #ifdef __cplusplus
 }
 #endif
+
+/************************ (C) COPYRIGHT LSITA ******************END OF FILE****/

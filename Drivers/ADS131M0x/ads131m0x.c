@@ -463,19 +463,6 @@ bool adsReadDataOptimized(adsChannelData_t *DataStruct)
 
     adsSetCS(HIGH);
 
-//#ifdef MCU_HIGH
-//    System.meas.fExtractVolt = fCoeffUeDefault * DataStruct->channel0;
-//    System.meas.fFocusVolt = fCoeffUfDefault * DataStruct->channel1;
-//
-//    if (uartIsIdle())
-//    	sendResults();
-//
-//#else // MCU_LOW
-//    System.meas.fAnodeCurrent = fCoeffIaDefault * DataStruct->channel0;
-//    System.meas.fCathodeVolt = fCoeffUcDefault * DataStruct->channel1;
-////    pidMeasOscPeriod();
-//#endif // MCU_HIGH
-
     // Returns true when a CRC error occurs
     return false;
 }
@@ -579,34 +566,9 @@ _OPT_O3 bool adsReadDataITcallback(adsChannelData_t *DataStruct)
 //    	adsStartup();
     }
 
-//    System.meas.fAnodeCurrent = fCoeffIaDefault * DataStruct->channel0;
-//    System.meas.fCathodeVolt = fCoeffUcDefault * DataStruct->channel1;
-
     // Returns true when a CRC error occurs
     return false;
 }
-
-
-
-//void calcualteSamples(void)
-//{
-//#ifdef MCU_HIGH
-////    System.meas.fExtractVolt = fCoeffUeDefault * System.ads.data.channel0;
-////    System.meas.fFocusVolt = fCoeffUfDefault * System.ads.data.channel1;
-//    System.meas.fExtractVolt = fCoeffUe.gain * (System.ads.data.channel0 - fCoeffUe.offset);
-//    System.meas.fFocusVolt = fCoeffUf.gain * (System.ads.data.channel1 - fCoeffUf.offset);
-//
-//    if (uartIsIdle())
-//    	sendResults();
-//
-//#else // MCU_LOW
-////    System.meas.fAnodeCurrent = fCoeffIaDefault * System.ads.data.channel0;
-////    System.meas.fCathodeVolt = fCoeffUcDefault * System.ads.data.channel1;
-//    System.meas.fAnodeCurrent = fCoeffIa.gain * (System.ads.data.channel0 - fCoeffIa.offset);
-//    System.meas.fCathodeVolt = fCoeffUc.gain * (System.ads.data.channel1 - fCoeffUc.offset);
-////    pidMeasOscPeriod();
-//#endif // MCU_HIGH
-//}
 
 
 

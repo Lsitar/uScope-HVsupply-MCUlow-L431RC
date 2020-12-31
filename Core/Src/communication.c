@@ -8,6 +8,7 @@
 #include <string.h>
 #include "communication.h"
 #include "main.h"		// for uart handle
+#include "regulator.h"
 #include "stm32l4xx_hal.h"
 #include "typedefs.h"
 #include "utilities.h"
@@ -260,6 +261,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		memcpy(&System.meas.fExtractVolt, &commFrame.data.values.fExtVolt, sizeof(float));
 		memcpy(&System.meas.fFocusVolt, &commFrame.data.values.fFocusVolt, sizeof(float));
 		System.bCommunicationOk = true;
+//		pidMeasOscPeriod(PWM_CHANNEL_UE);
+//		pidMeasOscPeriod(PWM_CHANNEL_UF);
 	}
 
 #ifndef CUSTOM_RX
