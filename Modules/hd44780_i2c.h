@@ -57,9 +57,9 @@ void HD44780_Clear(void);
  * @param  x: X location where string will start
  * @param  y; Y location where string will start
  * @param  *str: pointer to string to display
- * @retval None
+ * @retval number of printed chars (does not count \n and \r)
  */
-void HD44780_Puts(uint8_t x, uint8_t y, char* str);
+uint32_t HD44780_Puts(uint8_t x, uint8_t y, char* str);
 
 /**
  * @brief  Enables cursor blink

@@ -146,6 +146,9 @@ enum ePin {
 
 /****** Private functions *****************************************************/
 
+/*
+ * Send one byte to LCD
+ */
 static void send(enum eDataType DataType_, uint8_t byte) {
 
 	uint8_t data[4];
@@ -312,8 +315,9 @@ void HD44780_Clear(void) {
 
 
 
-void HD44780_Puts(uint8_t x, uint8_t y, char* str) {
+uint32_t HD44780_Puts(uint8_t x, uint8_t y, char* str) {
 	HD44780_CursorSet(x, y);
+	uint32_t stringLen = 0;
 	while (*str != '\0')
 	{
 		if (HD44780_State.currentX >= HD44780_State.Cols)
@@ -331,10 +335,12 @@ void HD44780_Puts(uint8_t x, uint8_t y, char* str) {
 		else
 		{
 			send(DataType_data, *str);
+			stringLen++;
 			HD44780_State.currentX++;
 		}
 		str++;
 	}
+	return stringLen;
 }
 
 

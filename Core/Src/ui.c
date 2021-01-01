@@ -35,13 +35,14 @@ static int32_t setDigit = 1;
 #define KB_PRESSED_THRESHOLD	2	// ticks ca. 100 ms
 #define KB_POWEROFF_THRESHOLD	40	// ticks ca. 2 s
 #define LCD_UPDATERATE_MS		250	// 3 Hz
-#define LCD_BLINK_TIME			500	// ms per state
+#define LCD_BLINK_TIME			333	// ms per state
 
 
 
 #define IS_SETTINGS_SCREEN	(  (actualScreen == SCREEN_SET_UC)   \
 							|| (actualScreen == SCREEN_SET_IA)   \
 							|| (actualScreen == SCREEN_SET_UF)   \
+							|| (actualScreen == SCREEN_SET_UE)   \
 							|| (actualScreen == SCREEN_SET_UP))  \
 
 /* Private types -------------------------------------------------------------*/
@@ -140,6 +141,27 @@ static void _clearField(int8_t x, uint8_t y, uint8_t len)
 	buff[len] = '\0';
 
 	HD44780_Puts(x, y, buff);
+}
+
+
+
+/*
+ * Used to blink text in settings.
+ * NOTE: the texts blinked now are the same length. Function was not tested for
+ * 		switching between different length texts.
+ */
+static inline void _blinkText(int8_t x, uint8_t y, char* text)
+{
+	// the global printedCharsLine[] is for numbers. For this texts use local variable for now.
+	static uint32_t printedLength = 0;
+
+	if (_blinkTimer() == true)
+	{
+		if (bBlink == true)
+			_clearField(x, y, printedLength);
+		else
+			printedLength = HD44780_Puts(x, y, text);
+	}
 }
 
 
@@ -264,6 +286,37 @@ void uiScreenChange(enum eScreen newScreen)
 		// print UP
 		printedCharsLine[3] = snprintf_(LCD_buff, 9, "%.0f V", (localRef.fPumpVolt) );
 		HD44780_Puts(10, 3, LCD_buff);
+		// correct blinking period
+		if (bBlink == true)
+		{
+			uint8_t row = 4;
+			if (newScreen == SCREEN_SET_UC) row = 0;
+			else if (newScreen == SCREEN_SET_IA) row = 1;
+			else if (newScreen == SCREEN_SET_UF) row = 2;
+			else if (newScreen == SCREEN_SET_UP) row = 3;
+			else if (newScreen == SCREEN_SET_UE) row = 3;
+			_clearField(0, row, 7);
+		}
+		break;
+
+	case SCREEN_SET_UE:	// roll screen one line up
+
+		HD44780_Puts(0, 0, "SET IA:");
+		HD44780_Puts(0, 1, "SET UF:");
+		HD44780_Puts(0, 2, "SET UP:");
+		HD44780_Puts(0, 3, "SET UE:");
+		// print IA
+		printedCharsLine[0] = snprintf_(LCD_buff, 9, "%.1f uA", (localRef.fAnodeCurrent * 1e6) );
+		HD44780_Puts(10, 0, LCD_buff);
+		// print UF
+		printedCharsLine[1] = snprintf_(LCD_buff, 9, "%.0f V", (localRef.fFocusVolt) );
+		HD44780_Puts(10, 1, LCD_buff);
+		// print UP
+		printedCharsLine[2] = snprintf_(LCD_buff, 9, "%.0f V", (localRef.fPumpVolt) );
+		HD44780_Puts(10, 2, LCD_buff);
+		// print UE
+		printedCharsLine[3] = snprintf_(LCD_buff, 9, "%.0f V", (localRef.fExtractVolt) );
+		HD44780_Puts(10, 3, LCD_buff);
 		break;
 
 	case SCREEN_POWERON_1:
@@ -362,62 +415,37 @@ void uiScreenUpdate(void)
 			break;
 
 		case SCREEN_SET_UC:
-			// blink text
-			if (_blinkTimer() == true)
-			{
-				if (bBlink == true)
-					HD44780_Puts(0, 0, "       ");	// clear one text line
-				else
-					HD44780_Puts(0, 0, "SET UC:");
-			}
-
+			_blinkText(0, 0, "SET UC:");
 			_clearField(10, 0, printedCharsLine[0]);
 			printedCharsLine[0] = snprintf_(LCD_buff, 10, "%.0f V", (localRef.fCathodeVolt) );
 			HD44780_Puts(10, 0, LCD_buff);
 			break;
 
 		case SCREEN_SET_IA:
-			// blink text
-			if (_blinkTimer() == true)
-			{
-				if (bBlink == true)
-					HD44780_Puts(0, 1, "       ");
-				else
-					HD44780_Puts(0, 1, "SET IA:");
-			}
-
+			_blinkText(0, 1, "SET IA:");
 			_clearField(10, 1, printedCharsLine[1]);
 			printedCharsLine[1] = snprintf_(LCD_buff, 10, "%.1f uA", (localRef.fAnodeCurrent * 1e6) );
 			HD44780_Puts(10, 1, LCD_buff);
 			break;
 
 		case SCREEN_SET_UF:
-			// blink text
-			if (_blinkTimer() == true)
-			{
-				if (bBlink == true)
-					HD44780_Puts(0, 2, "       ");
-				else
-					HD44780_Puts(0, 2, "SET UF:");
-			}
-
+			_blinkText(0, 2, "SET UF:");
 			_clearField(10, 2, printedCharsLine[2]);
 			printedCharsLine[2] = snprintf_(LCD_buff, 10, "%.0f V", (localRef.fFocusVolt) );
 			HD44780_Puts(10, 2, LCD_buff);
 			break;
 
 		case SCREEN_SET_UP:
-			// blink text
-			if (_blinkTimer() == true)
-			{
-				if (bBlink == true)
-					HD44780_Puts(0, 3, "       ");
-				else
-					HD44780_Puts(0, 3, "SET UP:");
-			}
-
+			_blinkText(0, 3, "SET UP:");
 			_clearField(10, 3, printedCharsLine[3]);
 			printedCharsLine[3] = snprintf_(LCD_buff, 10, "%.0f V", (localRef.fPumpVolt) );
+			HD44780_Puts(10, 3, LCD_buff);
+			break;
+
+		case SCREEN_SET_UE:
+			_blinkText(0, 3, "SET UE:");
+			_clearField(10, 3, printedCharsLine[3]);
+			printedCharsLine[3] = snprintf_(LCD_buff, 10, "%.0f V", (localRef.fExtractVolt) );
 			HD44780_Puts(10, 3, LCD_buff);
 			break;
 
