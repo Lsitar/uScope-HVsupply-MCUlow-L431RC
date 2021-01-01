@@ -34,7 +34,7 @@ static int32_t setDigit = 1;
 #define KB_READ_INTERVAL		50	// ms
 #define KB_PRESSED_THRESHOLD	2	// ticks ca. 100 ms
 #define KB_POWEROFF_THRESHOLD	40	// ticks ca. 2 s
-#define LCD_UPDATERATE_MS		333	// 3 Hz
+#define LCD_UPDATERATE_MS		250	// 3 Hz
 #define LCD_BLINK_TIME			500	// ms per state
 
 
@@ -268,15 +268,15 @@ void uiScreenChange(enum eScreen newScreen)
 
 	case SCREEN_POWERON_1:
 		HD44780_Puts(2, 0, "Microscope supply");	// 17 chars
-		HD44780_Puts(4, 1, "Politechnika");	// 12 chars
-		HD44780_Puts(5, 2, "Wroclawska");	// 10 chars
-		HD44780_Puts(5, 3, "W11  WEMiF");	// 9 chars
+		HD44780_Puts(4, 1, "Politechnika");			// 12 chars
+		HD44780_Puts(5, 2, "Wroclawska");			// 10 chars
+		HD44780_Puts(5, 3, "W11  WEMiF");			// 9 chars
 		break;
 
 	case SCREEN_POWERON_2:
 		HD44780_Puts(2, 0, "Microscope supply");	// 17 chars
-		HD44780_Puts(3, 2, "Lukasz Sitarek");	// 14 chars
-		HD44780_Puts(8, 3, "2021");	// 4 chars
+		HD44780_Puts(3, 2, "Lukasz Sitarek");		// 14 chars
+		HD44780_Puts(8, 3, "2021");					// 4 chars
 		break;
 
 	case SCREEN_POWEROFF:
@@ -324,21 +324,17 @@ void uiScreenUpdate(void)
 		{
 			// line 1 - Cathode voltage
 			_clearField(9, 0, printedCharsLine[0]);
-	//		snprintf_(LCD_buff, 20, "%i", System.ads.data.channel1);
 			printedCharsLine[0] = _printVoltage(System.meas.fCathodeVolt, LCD_buff, 11);
 			HD44780_Puts(9, 0, LCD_buff);
 
 			// line 2 - Anode current
 			_clearField(9, 1, printedCharsLine[1]);
-	//		snprintf_(LCD_buff, 20, "%i", System.ads.data.channel0);
 			printedCharsLine[1] = _printCurrent(System.meas.fAnodeCurrent, LCD_buff, 11);
 			HD44780_Puts(9, 1, LCD_buff);
 
 			// line 3 - Anode power
 			_clearField(9, 2, printedCharsLine[2]);
-	//		snprintf_(LCD_buff, 20, "%i", (System.ads.data.channel0 * System.ads.data.channel1));
 			printedCharsLine[2] = _printPower((System.meas.fCathodeVolt * System.meas.fAnodeCurrent), LCD_buff, 11);
-
 			HD44780_Puts(9, 2, LCD_buff);
 
 			// line 4 - Battery SoC TODO
@@ -375,7 +371,6 @@ void uiScreenUpdate(void)
 					HD44780_Puts(0, 0, "SET UC:");
 			}
 
-//			HD44780_Puts(10, 0, "         ");	// clear line
 			_clearField(10, 0, printedCharsLine[0]);
 			printedCharsLine[0] = snprintf_(LCD_buff, 10, "%.0f V", (localRef.fCathodeVolt) );
 			HD44780_Puts(10, 0, LCD_buff);
@@ -386,12 +381,11 @@ void uiScreenUpdate(void)
 			if (_blinkTimer() == true)
 			{
 				if (bBlink == true)
-					HD44780_Puts(0, 1, "       ");	// clear one text line
+					HD44780_Puts(0, 1, "       ");
 				else
 					HD44780_Puts(0, 1, "SET IA:");
 			}
 
-//			HD44780_Puts(10, 1, "         ");	// clear line
 			_clearField(10, 1, printedCharsLine[1]);
 			printedCharsLine[1] = snprintf_(LCD_buff, 10, "%.1f uA", (localRef.fAnodeCurrent * 1e6) );
 			HD44780_Puts(10, 1, LCD_buff);
@@ -402,12 +396,11 @@ void uiScreenUpdate(void)
 			if (_blinkTimer() == true)
 			{
 				if (bBlink == true)
-					HD44780_Puts(0, 2, "       ");	// clear one text line
+					HD44780_Puts(0, 2, "       ");
 				else
 					HD44780_Puts(0, 2, "SET UF:");
 			}
 
-//			HD44780_Puts(10, 2, "         ");	// clear line
 			_clearField(10, 2, printedCharsLine[2]);
 			printedCharsLine[2] = snprintf_(LCD_buff, 10, "%.0f V", (localRef.fFocusVolt) );
 			HD44780_Puts(10, 2, LCD_buff);
@@ -418,12 +411,11 @@ void uiScreenUpdate(void)
 			if (_blinkTimer() == true)
 			{
 				if (bBlink == true)
-					HD44780_Puts(0, 3, "       ");	// clear one text line
+					HD44780_Puts(0, 3, "       ");
 				else
 					HD44780_Puts(0, 3, "SET UP:");
 			}
 
-//			HD44780_Puts(10, 3, "         ");	// clear line
 			_clearField(10, 3, printedCharsLine[3]);
 			printedCharsLine[3] = snprintf_(LCD_buff, 10, "%.0f V", (localRef.fPumpVolt) );
 			HD44780_Puts(10, 3, LCD_buff);
@@ -446,7 +438,6 @@ void uiScreenUpdate(void)
 void keyboardRoutine(void)
 {
 	static uint32_t uTimeTick = 0;
-//	static uint32_t uKeysPressedTime[KEY_NUMBER_OF] = {0};
 	static bool bInit;
 
 	if (bInit == false)
@@ -466,11 +457,10 @@ void keyboardRoutine(void)
 
 			if (uKeysPressedTime[KEY_POWER] > KB_POWEROFF_THRESHOLD)
 			{
-				// TODO shutdown safely: disable HV, wait for Voltmeter readings near 0 V
-//				powerLockOff();
-				highSideShutdown();
 				HD44780_Clear();
 				HD44780_Puts(5, 2, "Power off");
+				highSideShutdown();
+				powerLockOff();
 				while(0xDEADBABE);
 			}
 		}

@@ -5,6 +5,7 @@
  *      Author: lukasz
  */
 
+#include <math.h>
 #include <string.h>	// memset()
 #include <stdbool.h>
 #include "ads131m0x.h"
@@ -40,6 +41,12 @@ void init_user( void )
 
 	System.bHighSideShutdown = true;
 	System.bCommunicationOk = false;
+
+	System.meas.fAnodeCurrent = NAN;
+	System.meas.fCathodeVolt = NAN;
+	System.meas.fExtractVolt = NAN;
+	System.meas.fFocusVolt = NAN;
+	System.meas.fPumpVolt = NAN;
 //	System.ref.fCathodeVolt = -900.0f;
 
 	// output PWM

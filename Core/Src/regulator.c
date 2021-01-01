@@ -5,6 +5,7 @@
  *      Author: lukasz
  */
 
+#include "calibration.h"
 #include "stm32l4xx_hal.h"
 #include "pid_controller.h"
 #include "regulator.h"
@@ -105,6 +106,10 @@ void regulatorDeInit(void)
 	PIDModeSet(&pidUe, MANUAL);
 	PIDModeSet(&pidUf, MANUAL);
 	HAL_TIM_Base_Stop_IT(&htim6);
+	pwmSetDuty(PWM_CHANNEL_UC, 0.0f);
+	pwmSetDuty(PWM_CHANNEL_UE, 0.0f);
+	pwmSetDuty(PWM_CHANNEL_UF, 0.0f);
+	pwmSetDuty(PWM_CHANNEL_PUMP, 0.0f);
 }
 
 
@@ -118,12 +123,14 @@ void regulatorPeriodCallback(void)
 	PIDCompute(&pidUc);
 	pwmSetDuty(PWM_CHANNEL_UC, PIDOutputGet(&pidUc));
 
+	pwmSetVoltManual(PWM_CHANNEL_PUMP, System.ref.fPumpVolt);
+
 	// Run regulator only, when there are valid samples from High side. Else, stay on previous value.
 	if (System.bCommunicationOk == true)
 	{
 		PIDInputSet(&pidUe, System.meas.fExtractVolt);
-//		PIDSetpointSet(&pidUe, System.ref.fExtractVolt);
-		PIDSetpointSet(&pidUe, System.ref.fPumpVolt);	// for PID tuning
+		PIDSetpointSet(&pidUe, System.ref.fExtractVolt);
+//		PIDSetpointSet(&pidUe, System.ref.fPumpVolt);	// for PID tuning
 		PIDCompute(&pidUe);
 		pwmSetDuty(PWM_CHANNEL_UE, PIDOutputGet(&pidUe));
 
@@ -151,7 +158,12 @@ void pwmSetVoltManual(enum ePwmChannel PWM_CHANNEL_, float voltage)
 
 	float duty = voltage / fGain;
 
-	pwmSetDuty(PWM_CHANNEL_, duty);
+	if (PWM_CHANNEL_ == PWM_CHANNEL_PUMP)
+	{
+		pwmSetDuty(PWM_CHANNEL_PUMP, getPumpDuty(voltage));
+	}
+	else
+		pwmSetDuty(PWM_CHANNEL_, duty);
 }
 
 

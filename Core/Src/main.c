@@ -22,6 +22,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <math.h>
 #include "communication.h"
 #include "hd44780_i2c.h"
 #include "init.h"
@@ -724,16 +725,43 @@ void highSideStart(void)
 }
 
 
+
+/*
+ * Don't use in interrupts because of hard delay.
+ */
 void highSideShutdown(void)
 {
+	const uint32_t timeout = 5000;
 	// TODO discharge & shutdown HV before disabling 12 V
 	System.bHighSideShutdown = true;
+
+	regulatorDeInit();
+
+	uint32_t uTimestamp = HAL_GetTick();
+	while (HAL_GetTick() - uTimestamp < timeout)
+	{
+		bool exit = true;
+		if (fabsf(System.meas.fCathodeVolt) > 100.0f)
+			exit = false;
+		if (fabsf(System.meas.fExtractVolt) > 100.0f)
+			exit = false;
+		if (fabsf(System.meas.fFocusVolt) > 100.0f)
+			exit = false;
+		if (fabsf(System.meas.fPumpVolt) > 100.0f)
+			exit = false;
+
+		if (exit)
+			break;
+	}
 
 	power12Voff();
 	HAL_UART_AbortReceive_IT(&huart1);	// returns always HAL_OK
 	CLEAR_BIT(USART1->CR1, USART_CR1_UE);		// uart disable
 	System.bCommunicationOk = false;
-	regulatorDeInit();
+	// reset values from uart
+	System.meas.fExtractVolt = NAN;
+	System.meas.fFocusVolt = NAN;
+
 	ledRed(OFF);
 	ledGreen(OFF);
 }

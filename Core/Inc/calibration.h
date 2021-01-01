@@ -16,6 +16,7 @@ extern "C" {
 void calcualteSamples(void);
 void initCoefficients(void);
 void calibOffset(void);
+float getPumpDuty(float voltage);
 
 #ifdef __cplusplus
 }
