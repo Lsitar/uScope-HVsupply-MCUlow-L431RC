@@ -71,7 +71,6 @@
 /* Private variables ---------------------------------------------------------*/
 
 PIDControl pidUc, pidUe, pidUf;
-static float sweepBuff[SWEEP_BUFF_SIZE];	// 10 ms 0.5 V -> 500 V 10 s 1000 steps.
 
 /* Exported functions --------------------------------------------------------*/
 
@@ -224,11 +223,16 @@ void pidMeasOscPeriod(enum ePwmChannel PWM_CHANNEL_)
 	fLastSample = value;
 }
 
-static float sweepLastSample;
+
+
 static uint32_t sweepFallingCnt;
 static float sweepPeakCurr;		// result (IA)
 static float sweepPeakVolt;		// result (UE)
 static uint32_t sweepBuffIndex;
+static float sweepBuffIa[SWEEP_BUFF_SIZE];	// 10 ms 0.5 V -> 500 V 10 s 1000 steps.
+static float sweepBuffUe[SWEEP_BUFF_SIZE];	// 10 ms 0.5 V -> 500 V 10 s 1000 steps.
+
+
 
 /*
  * Init variables for Ue sweep
@@ -236,9 +240,9 @@ static uint32_t sweepBuffIndex;
 void sweepUeInit(void)
 {
 	SPAM(("%s\n", __func__));
-	memset(sweepBuff, 0x00, sizeof(sweepBuff));
+	memset(sweepBuffIa, 0x00, sizeof(sweepBuffIa));
+	memset(sweepBuffUe, 0x00, sizeof(sweepBuffUe));
 	System.ref.fExtractVolt = 0.0f;
-	sweepLastSample = 0.0f;
 	sweepFallingCnt = 0;
 	sweepBuffIndex = 0;
 
@@ -255,20 +259,23 @@ void sweepUeInit(void)
 void sweepUe(void)
 {
 	const float fStepVolt = 0.5f;
-	const uint32_t uStepMs = 10;	// NOTE: PID regulator has 10 ms tick, so don't go faster here
-
-	static uint32_t uTimestamp;
+//	const uint32_t uStepMs = 10;	// NOTE: PID regulator has 10 ms tick, so don't go faster here
+	// EDIT: use same sampling time as regulator period
+//	static uint32_t uTimestamp;
 
 	if (System.bSweepOn)
 	{
-		if (HAL_GetTick() - uTimestamp >= uStepMs)
+//		if (HAL_GetTick() - uTimestamp >= uStepMs)
 		{
-			uTimestamp = HAL_GetTick();
+//			uTimestamp = HAL_GetTick();
 
 			if (sweepBuffIndex < SWEEP_BUFF_SIZE)
-				sweepBuff[sweepBuffIndex++] = System.meas.fAnodeCurrent;
+			{
+				sweepBuffIa[sweepBuffIndex] = System.meas.fAnodeCurrent;
+				sweepBuffUe[sweepBuffIndex++] = System.meas.fExtractVolt;
+			}
 
-			// change only ref, will be set by regulator loop
+			// change only ref, will be set by regulator loop (allow little overdrive)
 			if (System.ref.fExtractVolt < (System.ref.fExtractVoltLimit * 1.1f))
 				System.ref.fExtractVolt += fStepVolt;
 
@@ -289,7 +296,7 @@ void sweepUe(void)
 //			{
 //				sweepUeExit(true); // TODO temp exit on falling current should be true, and on the voltage should be false
 //			}
-			if ((System.meas.fExtractVolt > (0.25f * System.ref.fExtractVoltLimit)) && (sweepFallingCnt > 50))
+			if ((System.meas.fExtractVolt > (0.25f * System.ref.fExtractVoltLimit)) && (sweepFallingCnt > 100))
 			{
 				SPAM(("falling, "));
 				sweepUeExit(true);
