@@ -5,7 +5,7 @@
  *      Author: lukasz
  */
 
-#include <math.h>
+#include <math.h>	// NAN
 #include <string.h>	// memset()
 #include <stdbool.h>
 #include "ads131m0x.h"
@@ -52,11 +52,6 @@ void init_user( void )
 
 	memcpy(&System.sweepResult, &System.meas, sizeof(struct sRegulatedVal));
 
-//	System.sweepResult.fAnodeCurrent = NAN;
-//	System.sweepResult.fCathodeVolt = NAN;
-//	System.sweepResult.fExtractVolt = NAN;
-//	System.sweepResult.fAnodeCurrent = NAN;
-
 //	System.ref.fCathodeVolt = -900.0f;
 
 	// output PWM
@@ -70,37 +65,12 @@ void init_user( void )
 	HAL_TIM_PWM_Start(&htim1, PWM_CHANNEL_UF);
 	HAL_TIM_PWM_Start(&htim1, PWM_CHANNEL_PUMP);
 
-	// PID regulator - init when High Side MCU 'll be running
-//	regulatorInit();
-//	PIDSetpointSet(&pidUc, 0.0f);
-//	PIDSetpointSet(&pidUe, 0.0f);
-//	PIDSetpointSet(&pidUf, 0.0f);
-//	HAL_TIM_Base_Start_IT(&htim6);
-
-#ifdef CUSTOM_RX
-//	uartCustomRxInit();	// this not now, but at High side start
-#endif
+	// PID regulator - not now, init when High Side MCU 'll be running.
 
 	// display module, screen variables
 	uiInit();
 
-//	HAL_StatusTypeDef i2cStatus = HAL_I2C_IsDeviceReady(&hi2c1, PCF8574_ADDR_WRITE, 3, 100);
-//	if (i2cStatus == HAL_OK)
-//	{
-//		SPAM(("I2C_ready\n"));
-//		HD44780_Init(20, 4);
-//	}
-//	else
-//	{
-//		SPAM(("I2C_LCD_error\n"));
-//		ledError(5);
-//		powerLockOff();
-//		while (0xDEAD);
-//	}
-//	uiScreenChange(SCREEN_POWERON_1);
-
 	InitADC();
-
 
 //	init_adc12();
 
