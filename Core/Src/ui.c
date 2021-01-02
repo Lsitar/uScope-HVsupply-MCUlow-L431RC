@@ -34,8 +34,9 @@ static int32_t setDigit = 1;
 #define KB_READ_INTERVAL		50	// ms
 #define KB_PRESSED_THRESHOLD	2	// ticks ca. 100 ms
 #define KB_POWEROFF_THRESHOLD	40	// ticks ca. 2 s
-#define LCD_UPDATERATE_MS		250	// 3 Hz
-#define LCD_BLINK_TIME			333	// ms per state
+#define LCD_UPDATERATE_MS		250	// 4 Hz
+#define LCD_BLINK_TIME			333	// ms per state. NOTE: possible blinking pe-
+									// riod is limited down to LCD_UPDATERATE_MS
 
 
 
@@ -43,6 +44,7 @@ static int32_t setDigit = 1;
 							|| (actualScreen == SCREEN_SET_IA)   \
 							|| (actualScreen == SCREEN_SET_UF)   \
 							|| (actualScreen == SCREEN_SET_UE)   \
+							|| (actualScreen == SCREEN_SET_SWEEP)   \
 							|| (actualScreen == SCREEN_SET_UP))  \
 
 /* Private types -------------------------------------------------------------*/
@@ -59,6 +61,7 @@ enum eKey
 };
 
 static uint32_t uKeysPressedTime[KEY_NUMBER_OF] = {0};
+static bool encoderSwReleased;
 
 /* Private functions ---------------------------------------------------------*/
 
@@ -66,15 +69,32 @@ static void _changeScreenLeftRight(enum eKey key)
 {
 	// Switch MAIN screens /////////////////////////////////////////////////////
 	if (actualScreen == SCREEN_1)
-		uiScreenChange(SCREEN_2);
+	{
+		if (key == KEY_LEFT)
+			uiScreenChange(SCREEN_SWEEP_IA);
+		else if (key == KEY_RIGHT)
+			uiScreenChange(SCREEN_2);
+	}
 	else if (actualScreen == SCREEN_2)
-		uiScreenChange(SCREEN_1);
+	{
+		if (key == KEY_LEFT)
+			uiScreenChange(SCREEN_1);
+		else if (key == KEY_RIGHT)
+			uiScreenChange(SCREEN_SWEEP_IA);
+	}
+	else if (actualScreen == SCREEN_SWEEP_IA)
+	{
+		if (key == KEY_LEFT)
+			uiScreenChange(SCREEN_2);
+		else if (key == KEY_RIGHT)
+			uiScreenChange(SCREEN_1);
+	}
 
 	// Switch SETTINGS screens /////////////////////////////////////////////////
 	else if (actualScreen == SCREEN_SET_UC)
 	{
 		if (key == KEY_LEFT)
-			uiScreenChange(SCREEN_SET_UP);
+			uiScreenChange(SCREEN_SET_UE);
 		else if (key == KEY_RIGHT)
 			uiScreenChange(SCREEN_SET_IA);
 	}
@@ -96,6 +116,13 @@ static void _changeScreenLeftRight(enum eKey key)
 	{
 		if (key == KEY_LEFT)
 			uiScreenChange(SCREEN_SET_UF);
+		else if (key == KEY_RIGHT)
+			uiScreenChange(SCREEN_SET_UE);
+	}
+	else if (actualScreen == SCREEN_SET_UE)
+	{
+		if (key == KEY_LEFT)
+			uiScreenChange(SCREEN_SET_UP);
 		else if (key == KEY_RIGHT)
 			uiScreenChange(SCREEN_SET_UC);
 	}
@@ -170,7 +197,9 @@ static int32_t _printVoltage(float voltage, char* buff, uint8_t buffSize)
 {
 	float absVoltage = fabsf(voltage);
 
-	if (absVoltage < 100.0f)
+	if (isnanf(voltage))
+		return snprintf_(buff, buffSize, "----- V");
+	else if (absVoltage < 100.0f)
 		return snprintf_(buff, buffSize, "%.2f V", voltage);
 	else if (absVoltage < 1000.0f)
 		return snprintf_(buff, buffSize, "%.1f V", voltage);
@@ -184,7 +213,9 @@ static int32_t _printCurrent(float current, char* buff, uint8_t buffSize)
 {
 	current = fabsf(current * 1000000.0f);	// convert to uA
 
-	if (current < 49.0f)
+	if (isnanf(current))
+		return snprintf_(buff, buffSize, "----- uA");
+	else if (current < 49.0f)
 		return snprintf_(buff, buffSize, "%.2f uA", current);
 	else
 		return snprintf_(buff, buffSize, ">49.0 uA", current);
@@ -231,6 +262,13 @@ void uiInit(void)
 
 
 
+uint32_t uiGetScreenTime(void)
+{
+	return HAL_GetTick() - uScreenTimer;
+}
+
+
+
 void uiScreenChange(enum eScreen newScreen)
 {
 	HD44780_Clear();
@@ -264,6 +302,22 @@ void uiScreenChange(enum eScreen newScreen)
 		HD44780_Puts(2, 2, "Upump:");
 		// line 4 - Battery SoC
 		HD44780_Puts(0, 3, "Battery:");
+		break;
+
+	case SCREEN_SWEEP_IA:
+		// line 1 - Extract voltage
+		HD44780_Puts(5, 0, "UE:");
+		// line 2 - Cathode current
+		HD44780_Puts(5, 1, "IA:");
+		// line 3 - Peak voltage
+		HD44780_Puts(0, 2, "Peak:");
+		// line 4 - Peak current
+		HD44780_Puts(0, 3, "Peak:");
+		break;
+
+	case SCREEN_SET_SWEEP:
+		// line 1 - Extract voltage
+		HD44780_Puts(0, 0, "UE Limit:");
 		break;
 
 	case SCREEN_SET_UC:
@@ -342,13 +396,6 @@ void uiScreenChange(enum eScreen newScreen)
 
 
 
-uint32_t uiGetScreenTime(void)
-{
-	return HAL_GetTick() - uScreenTimer;
-}
-
-
-
 /*
  * Call this function every.. 50 ms?
  * Duration ca. 100 - 150 us
@@ -405,13 +452,46 @@ void uiScreenUpdate(void)
 			printedCharsLine[1] = _printVoltage(System.meas.fFocusVolt, LCD_buff, 11);
 			HD44780_Puts(9, 1, LCD_buff);
 
-			// line 3 - Pump voltage
+			// line 3 - Pump voltage - print ref value, there's no measurement
 			_clearField(9, 2, printedCharsLine[2]);
-			printedCharsLine[2] = _printVoltage(System.meas.fPumpVolt, LCD_buff, 11);
+			if (System.bHighSidePowered == true)
+				printedCharsLine[2] = _printVoltage(System.ref.fPumpVolt, LCD_buff, 11);
+			else
+				printedCharsLine[2] = _printVoltage(NAN, LCD_buff, 11);
 			HD44780_Puts(9, 2, LCD_buff);
 
 			// line 4 - Battery SoC TODO
 			_clearField(9, 3, printedCharsLine[3]);
+			break;
+
+		case SCREEN_SWEEP_IA:
+			// line 1 - Extract voltage
+			_clearField(9, 0, printedCharsLine[0]);
+			printedCharsLine[0] = _printVoltage(System.meas.fExtractVolt, LCD_buff, 11);
+			HD44780_Puts(9, 0, LCD_buff);
+
+			// line 2 - Anode current
+			_clearField(9, 1, printedCharsLine[1]);
+			printedCharsLine[1] = _printCurrent(System.meas.fAnodeCurrent, LCD_buff, 11);
+			HD44780_Puts(9, 1, LCD_buff);
+
+			// line 3 - Peak voltage
+			_clearField(9, 2, printedCharsLine[2]);
+			printedCharsLine[2] = _printVoltage(System.sweepResult.fExtractVolt, LCD_buff, 11);
+			HD44780_Puts(9, 2, LCD_buff);
+
+			// line 4 - Peak current
+			_clearField(9, 3, printedCharsLine[3]);
+			printedCharsLine[3] = _printCurrent(System.sweepResult.fAnodeCurrent, LCD_buff, 11);
+			HD44780_Puts(9, 3, LCD_buff);
+			break;
+
+		case SCREEN_SET_SWEEP:
+			// line 1 - Extract voltage
+			_blinkText(0, 0, "UE Limit:");
+			_clearField(10, 0, printedCharsLine[0]);
+			printedCharsLine[0] = snprintf_(LCD_buff, 10, "%.0f V", (localRef.fExtractVoltLimit) );
+			HD44780_Puts(10, 0, LCD_buff);
 			break;
 
 		case SCREEN_SET_UC:
@@ -507,16 +587,18 @@ void keyboardRoutine(void)
 					memcpy(&localRef, &System.ref, sizeof(localRef));
 					returnScreen = actualScreen;
 					//setDigit = 1;
-					//uiScreenChange(SCREEN_SET_UC);
-					uiScreenChange(settingsScreen);
+					if (actualScreen == SCREEN_SWEEP_IA)
+						uiScreenChange(SCREEN_SET_SWEEP);
+					else
+						uiScreenChange(settingsScreen);
 				}
 				else
 				{	// settings confirmed
 					memcpy(&System.ref, &localRef, sizeof(System.ref));
-					//uiScreenChange(SCREEN_1);
-					settingsScreen = actualScreen;
-					uiScreenChange(returnScreen);
+					if (actualScreen != SCREEN_SET_SWEEP)
+						settingsScreen = actualScreen;
 
+					uiScreenChange(returnScreen);
 				}
 			}
 		}
@@ -532,9 +614,10 @@ void keyboardRoutine(void)
 			{
 				if (IS_SETTINGS_SCREEN)
 				{	// settings abandoned
-					settingsScreen = actualScreen;
+					if (actualScreen != SCREEN_SET_SWEEP)
+						settingsScreen = actualScreen;
+
 					uiScreenChange(returnScreen);
-					//uiScreenChange(SCREEN_1);
 				}
 				else
 				{	// reset HD44780 controller
@@ -576,17 +659,58 @@ void keyboardRoutine(void)
 		// KEY_ENC /////////////////////////////////////////////////////////////
 		if (uKeysPressedTime[KEY_ENC] != 0)
 		{
-			uKeysPressedTime[KEY_ENC]++;
-
-			if (uKeysPressedTime[KEY_ENC] == KB_POWEROFF_THRESHOLD)	// do not repeat 'pressed' action
+			if (encoderSwReleased)
 			{
-				if (HAL_GPIO_ReadPin(TP32_GPIO_Port, TP32_Pin) == GPIO_PIN_RESET)
+				if (uKeysPressedTime[KEY_ENC] >= KB_PRESSED_THRESHOLD)
 				{
-					highSideStart();
+					if (IS_SETTINGS_SCREEN)
+					{
+						// increase digit position
+						setDigit *= 10;
+
+						// wrap digit position (depends on screen)
+						if (actualScreen == SCREEN_SET_IA)
+						{
+							if (setDigit > 100)	// 10 uA resolution
+								setDigit = 1;	// 0.1 uA resolution
+						}
+						else
+						{
+							if (setDigit > 1000)	// 1000 V resolution
+								setDigit = 1;	// 1 V resolution
+						}
+					}
+					else if (actualScreen == SCREEN_SWEEP_IA)
+					{
+						if (System.bSweepOn == false)
+						{
+							if (System.bHighSidePowered)
+								sweepUeInit();
+						}
+						else
+						{
+							sweepUeExit(false);
+						}
+					}
 				}
-				else
+				uKeysPressedTime[KEY_ENC] = 0;
+				encoderSwReleased = false;
+			}
+			else
+			{	// count pressed key till it reach hold time
+				uKeysPressedTime[KEY_ENC]++;
+
+				if (uKeysPressedTime[KEY_ENC] >= KB_POWEROFF_THRESHOLD)
 				{
-					highSideShutdown();
+					if (HAL_GPIO_ReadPin(TP32_GPIO_Port, TP32_Pin) == GPIO_PIN_RESET)	// HV enable switch - toggle
+					{
+						if (!IS_SETTINGS_SCREEN)
+							highSideStart();
+					}
+					else
+						highSideShutdown();
+
+					uKeysPressedTime[KEY_ENC] = 0;	// finish pressed counting
 				}
 			}
 		}
@@ -630,22 +754,24 @@ void encoderKnob_turnCallback(void)
 			setValue = localRef.fFocusVolt;
 		else if (actualScreen == SCREEN_SET_UP)
 			setValue = localRef.fPumpVolt;
+		else if (actualScreen == SCREEN_SET_UE)
+			setValue = localRef.fExtractVolt;
+		else if (actualScreen == SCREEN_SET_SWEEP)
+			setValue = localRef.fExtractVoltLimit;
 
 		/* rising edge on node A - check B level (test proven that here A is always high) */
 		if (levelB == GPIO_PIN_SET)
 		{
-			//SPAM(("left\n"));
 			//ITM_SendChar('L'); ITM_SendChar('\n');
 			setValue -= setDigit;
 		}
 		else
 		{
-			//SPAM(("right\n"));
 			//ITM_SendChar('R'); ITM_SendChar('\n');
 			setValue += setDigit;
 		}
 
-		/* save uint to float */
+		/* save uint to float & check bounds */
 		if (actualScreen == SCREEN_SET_IA)
 		{
 			if ((setValue < 500)&&(setValue >= 0))		// 0 - 50 uA limit
@@ -662,13 +788,23 @@ void encoderKnob_turnCallback(void)
 		}
 		else if (actualScreen == SCREEN_SET_UF)
 		{
-			if (setValue < 5001)	// 5 kV limit
+			if ((setValue < 5001)&&(setValue >= 0))//(setValue < 5001)	// 5 kV limit
 				localRef.fFocusVolt = (float)setValue;
 		}
 		else if (actualScreen == SCREEN_SET_UP)
 		{
-			if (setValue < 5001)	// 5 kV limit
+			if ((setValue < 5001)&&(setValue >= 0))//(setValue < 5001)	// 5 kV limit
 				localRef.fPumpVolt = (float)setValue;
+		}
+		else if (actualScreen == SCREEN_SET_UE)
+		{
+			if ((setValue < 2501)&&(setValue >= 0))//(setValue < 5001)	// 2.5 kV limit
+				localRef.fExtractVolt = (float)setValue;
+		}
+		else if (actualScreen == SCREEN_SET_SWEEP)
+		{
+			if ((setValue < 2501)&&(setValue >= 0))//(setValue < 5001)	// 2.5 kV limit
+				localRef.fExtractVoltLimit = (float)setValue;
 		}
 	}
 //	else
@@ -687,33 +823,41 @@ void encoderKnob_buttonCallback(void)
 	if (HAL_GPIO_ReadPin(ENC_SW_GPIO_Port, ENC_SW_Pin) == GPIO_PIN_SET)
 	{
 //		SPAM(("Enc released\n"));
-		uKeysPressedTime[KEY_ENC] = 0;	// disable incrementing in keyboard routine
+//		uKeysPressedTime[KEY_ENC] = 0;	// disable incrementing in keyboard routine
 
-		if (IS_SETTINGS_SCREEN)
-		{
-			// increase digit position
-			setDigit *= 10;
+//		if (IS_SETTINGS_SCREEN)
+//		{
+//			// increase digit position
+//			setDigit *= 10;
+//
+//			// wrap digit position (depends on screen)
+//			if (actualScreen == SCREEN_SET_IA)
+//			{
+//				if (setDigit > 100)	// 10 uA resolution
+//					setDigit = 1;	// 0.1 uA resolution
+//			}
+//			else if (  (actualScreen == SCREEN_SET_UC)
+//					|| (actualScreen == SCREEN_SET_UF)
+//					|| (actualScreen == SCREEN_SET_UP) )
+//			{
+//				if (setDigit > 1000)	// 1000 V resolution
+//					setDigit = 1;	// 1 V resolution
+//			}
+//		}
+//		else if (actualScreen == SCREEN_SWEEP_IA)
+//		{
+//			if (System.bHighSidePowered)
+//				sweepUeInit();
+//		}
 
-			// wrap digit position (depends on screen)
-			if (actualScreen == SCREEN_SET_IA)
-			{
-				if (setDigit > 100)	// 10 uA resolution
-					setDigit = 1;	// 0.1 uA resolution
-			}
-			else if (  (actualScreen == SCREEN_SET_UC)
-					|| (actualScreen == SCREEN_SET_UF)
-					|| (actualScreen == SCREEN_SET_UP) )
-			{
-				if (setDigit > 1000)	// 1000 V resolution
-					setDigit = 1;	// 1 V resolution
-			}
-		}
+		encoderSwReleased = true;
 	}
 	else
 	{
 //		SPAM(("Enc pressed\n"));
 		// Just init the variable and the rest will be done in keyboard routine
 		// as long as key is pressed.
+		encoderSwReleased = false;
 		uKeysPressedTime[KEY_ENC] = 1;
 	}
 }

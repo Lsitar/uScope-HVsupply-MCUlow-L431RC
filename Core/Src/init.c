@@ -38,8 +38,7 @@ void init_user( void )
 
 #else
 	powerLockOn();
-
-	System.bHighSideShutdown = true;
+	System.bHighSidePowered = false;
 	System.bCommunicationOk = false;
 
 	System.meas.fAnodeCurrent = NAN;
@@ -47,6 +46,14 @@ void init_user( void )
 	System.meas.fExtractVolt = NAN;
 	System.meas.fFocusVolt = NAN;
 	System.meas.fPumpVolt = NAN;
+
+	memcpy(&System.sweepResult, &System.meas, sizeof(struct sRegulatedVal));
+
+//	System.sweepResult.fAnodeCurrent = NAN;
+//	System.sweepResult.fCathodeVolt = NAN;
+//	System.sweepResult.fExtractVolt = NAN;
+//	System.sweepResult.fAnodeCurrent = NAN;
+
 //	System.ref.fCathodeVolt = -900.0f;
 
 	// output PWM

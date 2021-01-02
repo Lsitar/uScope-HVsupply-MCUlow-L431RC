@@ -16,9 +16,10 @@ extern "C" {
 struct sRegulatedVal
 {
 	float fAnodeCurrent;
-	uint32_t uAnodeCurrent;	// 0.1 uA unit
+	uint32_t uAnodeCurrent;	// 0.1 uA unit - for settings
 	float fCathodeVolt;
 	float fExtractVolt;
+	float fExtractVoltLimit;
 	float fFocusVolt;
 	float fPumpVolt;
 };
@@ -27,10 +28,10 @@ struct sSystem
 {
 	struct sRegulatedVal meas;
 	struct sRegulatedVal ref;
-//	struct sRegulatedVal disp;
+	struct sRegulatedVal sweepResult;
 	bool bCommunicationOk;
-	bool bHighSideShutdown;
-
+	bool bHighSidePowered;
+	bool bSweepOn;
 	adsStatus_t ads;
 };
 

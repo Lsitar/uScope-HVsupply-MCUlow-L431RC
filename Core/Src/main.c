@@ -123,6 +123,17 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 
+	/* TODO
+	 * WiP:
+	 * - on sweep screen, on KEY_ENTER go to sweep limit setting
+	 *
+	 * bugs:
+	 * - voltage formating: always preserve place for sign (- for negative and space for positive)
+	 *
+	 * features:
+	 * - save & restore last setted values (flash reading & saving at power on/off)
+	 */
+
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -713,7 +724,7 @@ static void MX_GPIO_Init(void)
 
 void highSideStart(void)
 {
-	System.bHighSideShutdown = false;
+	System.bHighSidePowered = true;
 	power12Von();
 #ifdef CUSTOM_RX
 	uartCustomRxInit();
@@ -721,7 +732,6 @@ void highSideStart(void)
 	uartReceiveFrameIT();
 #endif
 	regulatorInit();
-//	System.bCommunicationOk = true;
 }
 
 
@@ -732,8 +742,6 @@ void highSideStart(void)
 void highSideShutdown(void)
 {
 	const uint32_t timeout = 5000;
-	// TODO discharge & shutdown HV before disabling 12 V
-	System.bHighSideShutdown = true;
 
 	regulatorDeInit();
 
@@ -753,7 +761,7 @@ void highSideShutdown(void)
 		if (exit)
 			break;
 	}
-
+	System.bHighSidePowered = false;
 	power12Voff();
 	HAL_UART_AbortReceive_IT(&huart1);	// returns always HAL_OK
 	CLEAR_BIT(USART1->CR1, USART_CR1_UE);		// uart disable
@@ -764,6 +772,7 @@ void highSideShutdown(void)
 
 	ledRed(OFF);
 	ledGreen(OFF);
+	SPAM(("Discharge time: %u ms\n", (HAL_GetTick() - uTimestamp) ));
 }
 
 

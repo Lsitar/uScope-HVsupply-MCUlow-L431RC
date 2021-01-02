@@ -59,6 +59,9 @@ void regulatorDeInit(void);
 void regulatorPeriodCallback(void);
 void pwmSetVoltManual(enum ePwmChannel PWM_CHANNEL_, float voltage);
 void pidMeasOscPeriod(enum ePwmChannel PWM_CHANNEL_);	// for PID tuning
+void sweepUeInit(void);
+void sweepUe(void);
+void sweepUeExit(bool success);
 
 #ifdef __cplusplus
 }

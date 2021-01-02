@@ -314,7 +314,7 @@ void HAL_UART_AbortCpltCallback(UART_HandleTypeDef *huart)
 	UNUSED(huart);
 	HAL_StatusTypeDef retVal;
 
-	if (System.bHighSideShutdown == false)
+	if (System.bHighSidePowered == true)
 	{	// recovery from transmission error
 		retVal = HAL_UART_Receive_IT(&huart1, &(commFrame.uartRxBuff[0]), sizeof(struct sCommFrame));
 		if (retVal != HAL_OK)

@@ -5,6 +5,8 @@
  *      Author: lukasz
  */
 
+#include <math.h>
+#include <string.h>
 #include "calibration.h"
 #include "stm32l4xx_hal.h"
 #include "pid_controller.h"
@@ -215,6 +217,92 @@ void pidMeasOscPeriod(enum ePwmChannel PWM_CHANNEL_)
 		bLastSlope = false;
 	}
 	fLastSample = value;
+}
+
+static float sweepLastSample;
+static uint32_t sweepFallingCnt;
+static float sweepPeakCurr;		// result (IA)
+static float sweepPeakVolt;		// result (UE)
+
+/*
+ * Init variables for Ue sweep
+ */
+void sweepUeInit(void)
+{
+	SPAM(("%s\n", __func__));
+	System.ref.fExtractVolt = 0.0f;
+	sweepLastSample = 0.0f;
+	sweepFallingCnt = 0;
+
+	sweepPeakCurr = 0.0f;
+	sweepPeakVolt = 0.0f;
+	System.bSweepOn = true;
+}
+
+
+
+/*
+ * Call periodically
+ */
+void sweepUe(void)
+{
+//	const float fVoltLimit = 500.0f;
+	const float fStepVolt = 0.5f;
+	const uint32_t uStepMs = 10;	// NOTE: PID regulator has 10 ms tick, so don't go faster here
+
+	static uint32_t uTimestamp;
+
+	if (System.bSweepOn)
+	{
+		if (HAL_GetTick() - uTimestamp >= uStepMs)
+		{
+			uTimestamp = HAL_GetTick();
+
+			// change only ref, will be set by regulator loop
+			if (System.ref.fExtractVolt < (System.ref.fExtractVoltLimit * 1.1f))
+				System.ref.fExtractVolt += fStepVolt;
+
+			// update sample if current is rising
+			if (System.meas.fAnodeCurrent > sweepPeakCurr)
+			{
+				sweepPeakCurr = System.meas.fAnodeCurrent;
+				sweepPeakVolt = System.meas.fExtractVolt;
+				if (sweepFallingCnt) sweepFallingCnt--;
+			}
+			else
+				sweepFallingCnt++;
+
+			// check exit conditions (current falling or volt limit)
+//			if (   ( (System.meas.fExtractVolt > 0.25f * fVoltLimit) && (sweepFallingCnt > 10))
+//				|| (System.ref.fExtractVolt > fVoltLimit)   )
+			if (   ( (System.meas.fExtractVolt > 0.25f * System.ref.fExtractVoltLimit) && (sweepFallingCnt > 100))
+				|| (System.meas.fExtractVolt > System.ref.fExtractVoltLimit)   )
+			{
+				sweepUeExit(true); // TODO temp exit on falling current should be true, and on the voltage should be false
+			}
+		} // uTimestamp
+	} // bSweepOn
+}
+
+
+
+void sweepUeExit(bool success)
+{
+	SPAM(("%s\n", __func__));
+	System.bSweepOn = false;
+	memcpy(&System.sweepResult, &System.meas, sizeof(struct sRegulatedVal));
+	if (success == true)
+	{
+		System.sweepResult.fAnodeCurrent = sweepPeakCurr;
+		System.sweepResult.fExtractVolt = sweepPeakVolt;
+	}
+	else
+	{
+		System.sweepResult.fAnodeCurrent = NAN;
+		System.sweepResult.fExtractVolt = NAN;
+	}
+
+	System.ref.fExtractVolt = 0.0f;
 }
 
 /************************ (C) COPYRIGHT LSITA ******************END OF FILE****/

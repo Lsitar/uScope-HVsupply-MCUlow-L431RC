@@ -9,15 +9,15 @@
 
 /****** Private types & defines ***********************************************/
 
-//#define HD44780_BUFF_SIZE	1022	// 1 kB
-#define HD44780_BUFF_SIZE	2000	// 2 kB
+//#define HD44780_BUFF_SIZE	1022	// 1 kB is too low
+#define HD44780_BUFF_SIZE	(1024 + 512)	// 1.5 kB @4 Hz refresh rate is ok
 
 static struct
 {
 	uint8_t	transmitBuff[HD44780_BUFF_SIZE+1];
 	uint32_t tail;		// consumer, here reads
 	uint32_t head;		// producer, here writes
-	uint32_t freeSpace;		// number of free bytes
+//	uint32_t freeSpace;		// number of free bytes
 	uint32_t NumOfDataToSend;
 	uint32_t CounterOfSentData;
 	bool flag_idle;		/* this flag is set in Tx ready interrupt, when there's no new data to send.
@@ -31,20 +31,25 @@ static void buffAdd(uint8_t data)
 		HD44780_dataBuff.head = 0;
 
 	// check free space
-//	uint32_t freeSpace;
-//	if (HD44780_dataBuff.head > HD44780_dataBuff.tail)
-//		freeSpace = HD44780_BUFF_SIZE - HD44780_dataBuff.head + HD44780_dataBuff.tail;
-//	else
-//		freeSpace = HD44780_dataBuff.tail - HD44780_dataBuff.head;
-//
-//	if (freeSpace < 10)
-//		SPAM(("LCD buffer overflow!"));
-	if (HD44780_dataBuff.freeSpace)
-		HD44780_dataBuff.freeSpace--;
+	uint32_t freeSpace;
+	if (HD44780_dataBuff.head > HD44780_dataBuff.tail)
+		freeSpace = HD44780_BUFF_SIZE - HD44780_dataBuff.head + HD44780_dataBuff.tail;
 	else
-	{
+		freeSpace = HD44780_dataBuff.tail - HD44780_dataBuff.head;
+
+	if (freeSpace < 10)
 		SPAM(("LCD buffer overflow!\n"));
-	}
+
+	/* NOTE: below snippet is buggy. freeSpace is accesed from buffAdd (from
+	 * normal routine) and buffGet (from interrupt) so incrementations may be
+	 * lost.
+	 */
+//	if (HD44780_dataBuff.freeSpace)
+//		HD44780_dataBuff.freeSpace--;
+//	else
+//	{
+//		SPAM(("LCD buffer overflow!\n"));
+//	}
 }
 
 _OPT_O3 int32_t buffGet(void)
@@ -63,7 +68,7 @@ _OPT_O3 int32_t buffGet(void)
 			HD44780_dataBuff.tail = 0;
 //			SPAM(("LCD bytes send: %u\n", (unsigned int)(HD44780_dataBuff.CounterOfSentData) ));
 		}
-		HD44780_dataBuff.freeSpace++;
+//		HD44780_dataBuff.freeSpace++;
 	}
 	return data;
 }
@@ -260,7 +265,7 @@ void HD44780_Init(uint8_t cols, uint8_t rows) {
 		*ptr++ = 0;
 
 	HD44780_dataBuff.flag_idle = true;
-	HD44780_dataBuff.freeSpace = HD44780_BUFF_SIZE;
+//	HD44780_dataBuff.freeSpace = HD44780_BUFF_SIZE;
 
 	HD44780_State.Rows = rows;
 	HD44780_State.Cols = cols;
