@@ -16,6 +16,8 @@
 
 /* Private defines -----------------------------------------------------------*/
 
+#define SWEEP_BUFF_SIZE		2000
+
 #define PID_PERIOD	(0.01f)		// 10 ms
 #define PID_OUT_MIN	(0.0f)
 
@@ -66,7 +68,10 @@
 #define PID_UF_KD	(0.0f)
 #define PID_OUT_MAX_UF	(0.9f)	// same as for Uc
 
+/* Private variables ---------------------------------------------------------*/
+
 PIDControl pidUc, pidUe, pidUf;
+static float sweepBuff[SWEEP_BUFF_SIZE];	// 10 ms 0.5 V -> 500 V 10 s 1000 steps.
 
 /* Exported functions --------------------------------------------------------*/
 
@@ -223,6 +228,7 @@ static float sweepLastSample;
 static uint32_t sweepFallingCnt;
 static float sweepPeakCurr;		// result (IA)
 static float sweepPeakVolt;		// result (UE)
+static uint32_t sweepBuffIndex;
 
 /*
  * Init variables for Ue sweep
@@ -230,9 +236,11 @@ static float sweepPeakVolt;		// result (UE)
 void sweepUeInit(void)
 {
 	SPAM(("%s\n", __func__));
+	memset(sweepBuff, 0x00, sizeof(sweepBuff));
 	System.ref.fExtractVolt = 0.0f;
 	sweepLastSample = 0.0f;
 	sweepFallingCnt = 0;
+	sweepBuffIndex = 0;
 
 	sweepPeakCurr = 0.0f;
 	sweepPeakVolt = 0.0f;
@@ -246,7 +254,6 @@ void sweepUeInit(void)
  */
 void sweepUe(void)
 {
-//	const float fVoltLimit = 500.0f;
 	const float fStepVolt = 0.5f;
 	const uint32_t uStepMs = 10;	// NOTE: PID regulator has 10 ms tick, so don't go faster here
 
@@ -258,6 +265,9 @@ void sweepUe(void)
 		{
 			uTimestamp = HAL_GetTick();
 
+			if (sweepBuffIndex < SWEEP_BUFF_SIZE)
+				sweepBuff[sweepBuffIndex++] = System.meas.fAnodeCurrent;
+
 			// change only ref, will be set by regulator loop
 			if (System.ref.fExtractVolt < (System.ref.fExtractVoltLimit * 1.1f))
 				System.ref.fExtractVolt += fStepVolt;
@@ -267,19 +277,30 @@ void sweepUe(void)
 			{
 				sweepPeakCurr = System.meas.fAnodeCurrent;
 				sweepPeakVolt = System.meas.fExtractVolt;
-				if (sweepFallingCnt) sweepFallingCnt--;
+//				if (sweepFallingCnt) sweepFallingCnt--;
+				sweepFallingCnt = 0;
 			}
 			else
 				sweepFallingCnt++;
 
 			// check exit conditions (current falling or volt limit)
-//			if (   ( (System.meas.fExtractVolt > 0.25f * fVoltLimit) && (sweepFallingCnt > 10))
-//				|| (System.ref.fExtractVolt > fVoltLimit)   )
-			if (   ( (System.meas.fExtractVolt > 0.25f * System.ref.fExtractVoltLimit) && (sweepFallingCnt > 100))
-				|| (System.meas.fExtractVolt > System.ref.fExtractVoltLimit)   )
+//			if (   ( (System.meas.fExtractVolt > 0.25f * System.ref.fExtractVoltLimit) && (sweepFallingCnt > 100))
+//				|| (System.meas.fExtractVolt > System.ref.fExtractVoltLimit)   )
+//			{
+//				sweepUeExit(true); // TODO temp exit on falling current should be true, and on the voltage should be false
+//			}
+			if ((System.meas.fExtractVolt > (0.25f * System.ref.fExtractVoltLimit)) && (sweepFallingCnt > 50))
 			{
-				sweepUeExit(true); // TODO temp exit on falling current should be true, and on the voltage should be false
+				SPAM(("falling, "));
+				sweepUeExit(true);
 			}
+			if (System.meas.fExtractVolt > System.ref.fExtractVoltLimit)
+			{
+				SPAM(("voltage, "));
+				sweepUeExit(true);
+			}
+
+
 		} // uTimestamp
 	} // bSweepOn
 }

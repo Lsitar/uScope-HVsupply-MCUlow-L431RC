@@ -10,7 +10,9 @@
 /****** Private types & defines ***********************************************/
 
 //#define HD44780_BUFF_SIZE	1022	// 1 kB is too low
-#define HD44780_BUFF_SIZE	(1024 + 512)	// 1.5 kB @4 Hz refresh rate is ok
+#define HD44780_BUFF_SIZE	(1024 + 512 + 256)	// 1.75 kB @4 Hz refresh rate is ok
+
+
 
 static struct
 {
@@ -18,55 +20,64 @@ static struct
 	uint32_t tail;		// consumer, here reads
 	uint32_t head;		// producer, here writes
 //	uint32_t freeSpace;		// number of free bytes
-	uint32_t NumOfDataToSend;
-	uint32_t CounterOfSentData;
+//	uint32_t NumOfDataToSend;
+//	uint32_t CounterOfSentData;
 	bool flag_idle;		/* this flag is set in Tx ready interrupt, when there's no new data to send.
 	 	 	 	 	 	 	 	 	 	 	 This flag is checked at loading data to circular buffer, and Tx is triggered if idle */
 } HD44780_dataBuff;
 
+
+
 static void buffAdd(uint8_t data)
 {
-	HD44780_dataBuff.transmitBuff[HD44780_dataBuff.head++] = data;
-	if (HD44780_dataBuff.head == HD44780_BUFF_SIZE)
-		HD44780_dataBuff.head = 0;
+//	HD44780_dataBuff.transmitBuff[HD44780_dataBuff.head++] = data;
+//	if (HD44780_dataBuff.head == HD44780_BUFF_SIZE)
+//		HD44780_dataBuff.head = 0;
 
 	// check free space
 	uint32_t freeSpace;
-	if (HD44780_dataBuff.head > HD44780_dataBuff.tail)
+	if (HD44780_dataBuff.head >= HD44780_dataBuff.tail)
 		freeSpace = HD44780_BUFF_SIZE - HD44780_dataBuff.head + HD44780_dataBuff.tail;
 	else
 		freeSpace = HD44780_dataBuff.tail - HD44780_dataBuff.head;
 
 	if (freeSpace < 10)
 		SPAM(("LCD buffer overflow!\n"));
+		// TODO maybe LCD reset. It enters here sometimes, no matter how big the buffer. It may be caused somehow by EMI.
+	else
+	{
+		HD44780_dataBuff.transmitBuff[HD44780_dataBuff.head++] = data;
+		if (HD44780_dataBuff.head == HD44780_BUFF_SIZE)
+			HD44780_dataBuff.head = 0;
+	}
 
-	/* NOTE: below snippet is buggy. freeSpace is accesed from buffAdd (from
-	 * normal routine) and buffGet (from interrupt) so incrementations may be
-	 * lost.
+	/* NOTE: below snippet is buggy. When freeSpace is accesed from buffAdd
+	 * (normal routine) and buffGet (interrupt) incrementations in interrupt may
+	 * be lost due to non-atomic operation in normal routine.
 	 */
 //	if (HD44780_dataBuff.freeSpace)
 //		HD44780_dataBuff.freeSpace--;
 //	else
-//	{
 //		SPAM(("LCD buffer overflow!\n"));
-//	}
 }
+
+
 
 _OPT_O3 int32_t buffGet(void)
 {
 	int32_t data;
 
 	if (HD44780_dataBuff.tail == HD44780_dataBuff.head)
-	{
+	{	// buffer empty
 		return -1;
 	}
 	else
-	{
+	{	// get data
 		data = HD44780_dataBuff.transmitBuff[HD44780_dataBuff.tail++];
+		// wrap buffer
 		if (HD44780_dataBuff.tail == HD44780_BUFF_SIZE)
 		{
 			HD44780_dataBuff.tail = 0;
-//			SPAM(("LCD bytes send: %u\n", (unsigned int)(HD44780_dataBuff.CounterOfSentData) ));
 		}
 //		HD44780_dataBuff.freeSpace++;
 	}
@@ -74,7 +85,10 @@ _OPT_O3 int32_t buffGet(void)
 }
 
 
+
 static const uint8_t row_offsets[] = {0x00, 0x40, 0x14, 0x54};
+
+
 
 enum eCommand {
 	HD44780_ClearDisplay       = (1u << 0),	/* execution time ? */
@@ -87,6 +101,8 @@ enum eCommand {
 	HD44780_SetDDRAMaddr       = (1u << 7)
 };
 
+
+
 /* Flags for display entry mode.
  * Sets cursor move direction and specifies display shift. */
 enum eEntryMode {
@@ -96,12 +112,16 @@ enum eEntryMode {
 	EntryMode_SHIFTDECREMENT = 0x00U,
 };
 
+
+
 enum eDisplayControl
 {
 	DisplayControl_DISPLAYON	= 0x04U,
 	DisplayControl_CURSORON		= 0x02U,
 	DisplayControl_BLINKON		= 0x01U,
 };
+
+
 
 enum eCursorShift
 {
@@ -110,6 +130,8 @@ enum eCursorShift
 	CursorShift_MOVERIGHT         =  0x04U,
 	CursorShift_MOVELEFT          =  0x00U,
 };
+
+
 
 enum eFunctionSet
 {
@@ -120,11 +142,15 @@ enum eFunctionSet
 	FunctionSet_5x8DOTS           =  0x00U,
 };
 
+
+
 enum eDataType
 {
 	DataType_data	= 0x00,
 	DataType_command
 };
+
+
 
 /* Private HD44780 structure */
 static struct {
@@ -154,8 +180,8 @@ enum ePin {
 /*
  * Send one byte to LCD
  */
-static void send(enum eDataType DataType_, uint8_t byte) {
-
+static void send(enum eDataType DataType_, uint8_t byte)
+{
 	uint8_t data[4];
 
 	/* first byte - data MSB & signals */
@@ -202,15 +228,12 @@ static void send(enum eDataType DataType_, uint8_t byte) {
 
 }
 
+
+
 _OPT_O3 void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c)
 {
 //	testpin29(true);
 	static uint8_t data;
-
-//	if (HD44780_dataBuff.flag_idle == false)
-//	{	// this is callback after send
-//		HD44780_dataBuff.CounterOfSentData++;
-//	}
 
 	int32_t status = buffGet();
 
@@ -226,9 +249,8 @@ _OPT_O3 void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c)
 
 
 
-
-static void HD44780_CursorSet(uint8_t col, uint8_t row) {
-
+static void HD44780_CursorSet(uint8_t col, uint8_t row)
+{
 	if (row >= HD44780_State.Rows) row = 0;
 	if (col >= HD44780_State.Cols) col = 0;
 
@@ -242,20 +264,10 @@ static void HD44780_CursorSet(uint8_t col, uint8_t row) {
 
 
 
-//#pragma GCC push_options
-//#pragma GCC optimize("O0")
-//static void HD44780_Delay_us (unsigned int i){
-//	unsigned int k=((SystemCoreClock)/1000000)*i;
-//	for(unsigned int j=0; j<=k ; j++) ;
-//}
-//#pragma GCC pop_options
-
-
-
 /****** Exported functions ****************************************************/
 
-void HD44780_Init(uint8_t cols, uint8_t rows) {
-
+void HD44780_Init(uint8_t cols, uint8_t rows)
+{
 	uint8_t* ptr = (uint8_t*)&HD44780_State;
 	for (uint32_t i=0; i<sizeof(HD44780_State); i++)
 		*ptr++ = 0;
@@ -308,8 +320,8 @@ void HD44780_Init(uint8_t cols, uint8_t rows) {
 
 
 
-
-void HD44780_Clear(void) {
+void HD44780_Clear(void)
+{
 	send(DataType_command, (uint8_t)HD44780_ClearDisplay);
 	// wait till all instructions will be sent to LCD
 	while (HD44780_dataBuff.flag_idle != true)
@@ -319,8 +331,8 @@ void HD44780_Clear(void) {
 
 
 
-
-uint32_t HD44780_Puts(uint8_t x, uint8_t y, char* str) {
+uint32_t HD44780_Puts(uint8_t x, uint8_t y, char* str)
+{
 	HD44780_CursorSet(x, y);
 	uint32_t stringLen = 0;
 	while (*str != '\0')
@@ -350,46 +362,70 @@ uint32_t HD44780_Puts(uint8_t x, uint8_t y, char* str) {
 
 
 
-
-void HD44780_DisplayOn(void) {
+void HD44780_DisplayOn(void)
+{
 	HD44780_State.DisplayControl |= DisplayControl_DISPLAYON;
 	send(DataType_command,(HD44780_DisplayControl | HD44780_State.DisplayControl));
 }
 
-void HD44780_DisplayOff(void) {
+
+
+void HD44780_DisplayOff(void)
+{
 	HD44780_State.DisplayControl &= (unsigned char)(~DisplayControl_DISPLAYON);
 	send(DataType_command,(HD44780_DisplayControl | HD44780_State.DisplayControl));
 }
 
-void HD44780_BlinkOn(void) {
+
+
+void HD44780_BlinkOn(void)
+{
 	HD44780_State.DisplayControl |= DisplayControl_BLINKON;
 	send(DataType_command,(HD44780_DisplayControl | HD44780_State.DisplayControl));
 }
 
-void HD44780_BlinkOff(void) {
+
+
+void HD44780_BlinkOff(void)
+{
 	HD44780_State.DisplayControl &= (unsigned char)(~DisplayControl_BLINKON);
 	send(DataType_command,(HD44780_DisplayControl | HD44780_State.DisplayControl));
 }
 
-void HD44780_CursorOn(void) {
+
+
+void HD44780_CursorOn(void)
+{
 	HD44780_State.DisplayControl |= DisplayControl_CURSORON;
 	send(DataType_command,(HD44780_DisplayControl | HD44780_State.DisplayControl));
 }
 
-void HD44780_CursorOff(void) {
+
+
+void HD44780_CursorOff(void)
+{
 	HD44780_State.DisplayControl &= (unsigned char)(~DisplayControl_CURSORON);
 	send(DataType_command,(HD44780_DisplayControl | HD44780_State.DisplayControl));
 }
 
-void HD44780_ScrollLeft(void) {
+
+
+void HD44780_ScrollLeft(void)
+{
 	send(DataType_command,(HD44780_CursorShift + CursorShift_DISPLAYMOVE + CursorShift_MOVELEFT));
 }
 
-void HD44780_ScrollRight(void) {
+
+
+void HD44780_ScrollRight(void)
+{
 	send(DataType_command,(HD44780_CursorShift + CursorShift_DISPLAYMOVE + CursorShift_MOVERIGHT));
 }
 
-void HD44780_CreateChar(uint8_t location, uint8_t *data) {
+
+
+void HD44780_CreateChar(uint8_t location, uint8_t *data)
+{
 	unsigned char i;
 	/* There is 8 locations available for custom characters */
 	location &= 0x07;
@@ -400,10 +436,15 @@ void HD44780_CreateChar(uint8_t location, uint8_t *data) {
 	}
 }
 
-void HD44780_PutCustom(uint8_t x, uint8_t y, uint8_t location) {
+
+
+void HD44780_PutCustom(uint8_t x, uint8_t y, uint8_t location)
+{
 	HD44780_CursorSet(x, y);
 	send(DataType_data,location);
 }
+
+
 
 void HD44780_demo(void)
 {
@@ -426,5 +467,4 @@ void HD44780_demo(void)
 	}
 }
 
-
-/*********************************END OF FILE**********************************/
+/************************ (C) COPYRIGHT LSITA ******************END OF FILE****/

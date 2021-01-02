@@ -31,6 +31,9 @@ void init_user( void )
 	memset(&System, 0x00, sizeof (System));
 
 	initCoefficients();
+	#ifdef USE_MOVAVG_IA_FILTER
+		movAvgInit();
+	#endif
 
 #ifdef MCU_HIGH
 
