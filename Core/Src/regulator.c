@@ -69,17 +69,20 @@
 #define PID_OUT_MAX_UF	(0.9f)	// same as for Uc
 
 /* **** Anode current regulator tuning *****************************************
- * Voltmeter calibrated first. Load 12 MOhm.
- * Ku = (0.00035f), osc -- ms cannot trigger
- * Ku = (0.000375f), osc 70 ms at 3100 V set (fading oscillations)
- * Ku = (0.0004f), osc 76 ms at 3100 V set (still oscillations)
+ * Ammeter calibrated first. Load with real uScope.
+ * Ku = (100000000.0f) (1e+8), osc -- ms cannot trigger. There was problem with startup beacouse of Ue near lower bound.
+ * Ku = (150000000.0f), stable, 0.35 uA out of 1.0 set... but after changing ref, oscillates still 150 ms.
+ * Ku = (200000000.0f), osc 85,99,111-115,124,137 ms ...
  *
- * Ku = (0.00038f), Tu = 76 ms --> Kp = (0.00017f), Ki = (0.0027f)
+ * Kp = 0.45 * Ku = 67 500 000
+ * Ki = 0.54 * Ku/Tu = 0.54 * (150 000 000 / 0.150) = 540 000 000
  */
-#define PID_IA_KP	(0.001f)
-#define PID_IA_KI	(0.0f)
+#define PID_IA_KP	(67500000.0f)
+#define PID_IA_KI	(540000000.0f)
 #define PID_IA_KD	(0.0f)
 #define PID_OUT_MAX_IA	(System.ref.fExtractVoltLimit)			//(2500.0f)	// max UE ref - TODO set it dynamically from variable
+
+//
 
 /* Private variables ---------------------------------------------------------*/
 
@@ -245,6 +248,8 @@ void pidMeasOscPeriod(enum ePwmChannel PWM_CHANNEL_)
 		value = System.meas.fFocusVolt;
 	else if (PWM_CHANNEL_ == PWM_CHANNEL_PUMP)
 		value = System.meas.fPumpVolt;
+	else if (PWM_CHANNEL_ == REG_IA)
+		value = System.meas.fAnodeCurrent;
 
 
 	if (value - fLastSample > 0.0f)

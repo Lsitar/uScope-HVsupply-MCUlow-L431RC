@@ -138,6 +138,7 @@ int main(void)
 	 * - save & restore last setted values (flash reading & saving at power on/off)
 	 * - on ESC hold in main screen, load default settings and reset settings memory
 	 * 		(in case something will get corrupted and settings stuck in pernament error)
+	 * - option to set PID regulator coeffs by UI. Or maybe even auto tuning..
 	 */
 
   /* USER CODE END 1 */

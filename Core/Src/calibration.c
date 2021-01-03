@@ -8,7 +8,7 @@
 #include "calibration.h"
 #include "communication.h"
 #include "main.h"
-//#include "regulator.h"
+#include "regulator.h"	// for debug defines PWM_CHANNEL_
 #include "typedefs.h"
 
 /* Private defines -----------------------------------------------------------*/
@@ -161,7 +161,8 @@ void calcualteSamples(void)
 	#endif
 
 	System.meas.fCathodeVolt = fCoeffUc.gain * (System.ads.data.channel1 - fCoeffUc.offset);
-//    pidMeasOscPeriod(PWM_CHANNEL_UC);
+    //pidMeasOscPeriod(PWM_CHANNEL_UC);
+	//pidMeasOscPeriod(REG_IA);
 
 #endif // MCU_HIGH
 }

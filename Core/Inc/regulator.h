@@ -22,9 +22,10 @@ enum ePwmChannel
 	PWM_CHANNEL_UE = TIM_CHANNEL_2,	// TIM1 CH2
 	PWM_CHANNEL_UF = TIM_CHANNEL_3,	// TIM1 CH3
 	PWM_CHANNEL_PUMP = TIM_CHANNEL_4,	// TIM1 CH4
+	REG_IA,		// used in regulator functions, not PWM
 };
 
-extern PIDControl pidUc, pidUe, pidUf;
+extern PIDControl pidUc, pidUe, pidUf, pidIa;
 
 /* Exported snippets ---------------------------------------------------------*/
 
@@ -48,6 +49,8 @@ static inline void pwmSetDuty(enum ePwmChannel PWM_CHANNEL_, float duty)
 		break;
 	case PWM_CHANNEL_PUMP:
 		TIM1->CCR4 = (uint32_t)(65535.0 * duty);
+		break;
+	case REG_IA:
 		break;
 	}
 }

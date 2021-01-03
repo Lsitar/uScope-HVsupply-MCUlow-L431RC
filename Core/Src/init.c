@@ -60,13 +60,13 @@ void init_user( void )
 
 	// TODO here may load previous settings from flash
 	System.ref.extMode = EXT_REGULATE_IA;
-	System.ref.uAnodeCurrent = 0;
+	System.ref.uAnodeCurrent = 5;
 	System.ref.fAnodeCurrent = 0.0f;
-	System.ref.fCathodeVolt = -1000.0f;
+	System.ref.fCathodeVolt = -2500.0f;
 	System.ref.fExtractVolt = 0.0f;
 	System.ref.fExtractVoltIaRef = 0.0f;
 	System.ref.fExtractVoltUserRef = 0.0f;
-	System.ref.fExtractVoltLimit = 100.0f;
+	System.ref.fExtractVoltLimit = 400.0f;
 	System.ref.fFocusVolt = 0.0f;
 	System.ref.fPumpVolt = 0.0f;
 
