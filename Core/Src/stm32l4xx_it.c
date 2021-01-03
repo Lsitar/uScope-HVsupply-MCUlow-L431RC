@@ -414,9 +414,13 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 
 
 
+/*
+ * 10 ms tick for PID regulators and logger
+ */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	UNUSED(htim);
+	loggerPeriod();
 	sweepUePeriod();
 	regulatorPeriodCallback();
 }

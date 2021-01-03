@@ -16,6 +16,12 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 
+enum eLoggerMode
+{
+	LOGGER_IA,
+	LOGGER_UE,
+};
+
 enum ePwmChannel
 {
 	PWM_CHANNEL_UC = TIM_CHANNEL_1,	// TIM1 CH1N
@@ -64,6 +70,9 @@ void regulatorDeInit(void);
 void regulatorPeriodCallback(void);
 void pwmSetVoltManual(enum ePwmChannel PWM_CHANNEL_, float voltage);
 void pidMeasOscPeriod(enum ePwmChannel PWM_CHANNEL_);	// for PID tuning
+
+void loggerInit(void);
+void loggerPeriod(void);
 
 void sweepUeInit(void);
 void sweepUePeriod(void);

@@ -16,7 +16,7 @@
 
 /* Private defines -----------------------------------------------------------*/
 
-#define SWEEP_BUFF_SIZE		2000
+#define LOGGER_BUFF_SIZE		2000
 
 #define PID_PERIOD	(0.01f)		// 10 ms
 #define PID_OUT_PWM_MIN	(0.0f)
@@ -283,9 +283,9 @@ void pidMeasOscPeriod(enum ePwmChannel PWM_CHANNEL_)
 static uint32_t sweepFallingCnt;
 static float sweepPeakCurr;		// result (IA)
 static float sweepPeakVolt;		// result (UE)
-static uint32_t sweepBuffIndex;
-static float sweepBuffIa[SWEEP_BUFF_SIZE];	// 10 ms 0.5 V -> 500 V 10 s 1000 steps.
-static float sweepBuffUe[SWEEP_BUFF_SIZE];	// 10 ms 0.5 V -> 500 V 10 s 1000 steps.
+static uint32_t loggerBuffIndex;
+static float loggerBuffIa[LOGGER_BUFF_SIZE];	// 10 ms 0.5 V -> 500 V 10 s 1000 steps.
+static float loggerBuffUe[LOGGER_BUFF_SIZE];	// 10 ms 0.5 V -> 500 V 10 s 1000 steps.
 static float fUserValueBackup;
 
 
@@ -295,16 +295,33 @@ static float fUserValueBackup;
 void sweepUeInit(void)
 {
 	SPAM(("%s\n", __func__));
-	memset(sweepBuffIa, 0x00, sizeof(sweepBuffIa));
-	memset(sweepBuffUe, 0x00, sizeof(sweepBuffUe));
+	memset(loggerBuffIa, 0x00, sizeof(loggerBuffIa));
+	memset(loggerBuffUe, 0x00, sizeof(loggerBuffUe));
 	fUserValueBackup = System.ref.fExtractVoltUserRef;
 	System.ref.fExtractVoltUserRef = 0.0f;
 	sweepFallingCnt = 0;
-	sweepBuffIndex = 0;
+	loggerBuffIndex = 0;
 
 	sweepPeakCurr = 0.0f;
 	sweepPeakVolt = 0.0f;
 	System.bSweepOn = true;
+}
+
+
+
+void loggerInit(void)
+{
+	SPAM(("Logger on,"));
+	memset(loggerBuffIa, 0x00, sizeof(loggerBuffIa));
+	//memset(loggerBuffUe, 0x00, sizeof(loggerBuffUe));
+	//fUserValueBackup = System.ref.fExtractVoltUserRef;
+	//System.ref.fExtractVoltUserRef = 0.0f;
+	//sweepFallingCnt = 0;
+	loggerBuffIndex = 0;
+
+	//sweepPeakCurr = 0.0f;
+	//sweepPeakVolt = 0.0f;
+	System.bLoggerOn = true;
 }
 
 
@@ -320,10 +337,10 @@ void sweepUePeriod(void)
 
 	if (System.bSweepOn && System.ref.extMode == EXT_SWEEP)
 	{
-		if (sweepBuffIndex < SWEEP_BUFF_SIZE)
+		if (loggerBuffIndex < LOGGER_BUFF_SIZE)
 		{
-			sweepBuffIa[sweepBuffIndex] = System.meas.fAnodeCurrent;
-			sweepBuffUe[sweepBuffIndex++] = System.meas.fExtractVolt;
+			loggerBuffIa[loggerBuffIndex] = System.meas.fAnodeCurrent;
+			loggerBuffUe[loggerBuffIndex++] = System.meas.fExtractVolt;
 		}
 
 		// change only ref, will be set by regulator loop (allow little overdrive)
@@ -357,6 +374,34 @@ void sweepUePeriod(void)
 			sweepUeExit(true);
 		}
 	} // bSweepOn
+}
+
+
+
+void loggerPeriod(void)
+{
+	static uint32_t uTimestamp;
+
+	if (System.bLoggerOn)
+	{
+		// print something to indicate logging progress
+		if (HAL_GetTick() - uTimestamp > 1000)
+		{
+			uTimestamp = HAL_GetTick();
+			ITM_SendChar('.');
+		}
+		// save sample
+		if (loggerBuffIndex < LOGGER_BUFF_SIZE)
+		{
+			loggerBuffIa[loggerBuffIndex++] = System.meas.fAnodeCurrent;
+		}
+		else
+		// exit
+		{
+			SPAM((" Logger full.\n"));
+			System.bLoggerOn = false;
+		}
+	}
 }
 
 

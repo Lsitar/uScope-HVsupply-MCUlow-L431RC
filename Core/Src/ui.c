@@ -716,20 +716,22 @@ void keyboardRoutine(void)
 						switch (System.ref.extMode)
 						{
 						case EXT_REGULATE_IA:
-							break;
-
 						case EXT_STEADY:
+						{
+							if ((System.bSweepOn == false) && (System.bLoggerOn == false))
+								loggerInit();
 							break;
-
+						}
 						case EXT_SWEEP:
-							if (System.bSweepOn == false)
+							if ((System.bSweepOn == false) && (System.bLoggerOn == false))
 							{
 								if (System.bHighSidePowered)
 									sweepUeInit();
 							}
 							else
 							{
-								sweepUeExit(false);
+								if (System.bSweepOn)
+									sweepUeExit(false);
 							}
 							break;
 						}

@@ -40,6 +40,8 @@ void init_user( void )
 	powerLockOn();
 	System.bHighSidePowered = false;
 	System.bCommunicationOk = false;
+	System.bLoggerOn = false;
+	System.bSweepOn = false;
 
 #ifdef USE_MOVAVG_IA_FILTER
 	movAvgInit();
@@ -55,18 +57,19 @@ void init_user( void )
 	System.meas.fExtractVoltUserRef = NAN;
 	System.meas.fExtractVoltLimit = NAN;
 	System.meas.extMode = EXT_REGULATE_IA;
+	System.meas.loggerMode = LOGGER_IA;
 
 	memcpy(&System.sweepResult, &System.meas, sizeof(struct sRegulatedVal));
 
 	// TODO here may load previous settings from flash
 	System.ref.extMode = EXT_REGULATE_IA;
-	System.ref.uAnodeCurrent = 5;
+	System.ref.uAnodeCurrent = 0;
 	System.ref.fAnodeCurrent = 0.0f;
 	System.ref.fCathodeVolt = -2500.0f;
 	System.ref.fExtractVolt = 0.0f;
 	System.ref.fExtractVoltIaRef = 0.0f;
 	System.ref.fExtractVoltUserRef = 0.0f;
-	System.ref.fExtractVoltLimit = 400.0f;
+	System.ref.fExtractVoltLimit = 500.0f;
 	System.ref.fFocusVolt = 0.0f;
 	System.ref.fPumpVolt = 0.0f;
 

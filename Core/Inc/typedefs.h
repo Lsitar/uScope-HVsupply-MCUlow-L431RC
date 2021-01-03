@@ -51,6 +51,7 @@ struct sRegulatedVal
 	float fExtractVoltLimit;	// limit set by user
 	uint32_t uAnodeCurrent;	// 0.1 uA unit - for settings
 	enum eExtMode extMode;
+	enum eLoggerMode loggerMode;	// choose value to log
 };
 
 struct sSystem
@@ -61,6 +62,7 @@ struct sSystem
 	bool bCommunicationOk;
 	bool bHighSidePowered;
 	bool bSweepOn;
+	bool bLoggerOn;
 	adsStatus_t ads;
 };
 
