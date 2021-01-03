@@ -34,7 +34,7 @@ static int32_t setDigit = 1;
 
 #define KB_READ_INTERVAL		50	// ms
 #define KB_PRESSED_THRESHOLD	2	// ticks ca. 100 ms
-#define KB_POWEROFF_THRESHOLD	40	// ticks ca. 2 s
+#define KB_HOLD_THRESHOLD	40	// ticks ca. 2 s
 #define LCD_UPDATERATE_MS		250	// 4 Hz
 #define LCD_BLINK_TIME			333	// ms per state. NOTE: possible blinking pe-
 									// riod is limited down to LCD_UPDATERATE_MS
@@ -76,7 +76,7 @@ static void _changeScreenLeftRight(enum eKey key)
 	if (actualScreen == SCREEN_1)
 	{
 		if (key == KEY_LEFT)
-			uiScreenChange(SCREEN_SWEEP_UE);
+			uiScreenChange(SCREEN_CONTROL_UE);
 		else if (key == KEY_RIGHT)
 			uiScreenChange(SCREEN_2);
 	}
@@ -85,9 +85,9 @@ static void _changeScreenLeftRight(enum eKey key)
 		if (key == KEY_LEFT)
 			uiScreenChange(SCREEN_1);
 		else if (key == KEY_RIGHT)
-			uiScreenChange(SCREEN_SWEEP_UE);
+			uiScreenChange(SCREEN_CONTROL_UE);
 	}
-	else if (actualScreen == SCREEN_SWEEP_UE)
+	else if (actualScreen == SCREEN_CONTROL_UE)
 	{
 		if (key == KEY_LEFT)
 			uiScreenChange(SCREEN_2);
@@ -320,7 +320,7 @@ void uiScreenChange(enum eScreen newScreen)
 		// don't need to print values here, all 'll be refreshed later
 		break;
 
-	case SCREEN_SWEEP_UE:
+	case SCREEN_CONTROL_UE:
 		HD44780_Puts(5, 0, "UE:");		// line 1 - Extract voltage
 		HD44780_Puts(5, 1, "IA:");		// line 2 - Cathode current
 		HD44780_Puts(0, 2, "Peak:");	// line 3 - Peak voltage
@@ -369,13 +369,13 @@ void uiScreenChange(enum eScreen newScreen)
 		HD44780_Puts(0, 2, "UE Mode:");
 		// Need to print all values here, beacouse only one 'll be refreshed later.
 		// print UE
-		printedCharsLine[0] = snprintf_(LCD_buff, 9, "%.0f V", (localRef.fExtractVolt) );
+		printedCharsLine[0] = snprintf_(LCD_buff, 9, "%.0f V", (localRef.fExtractVoltUserRef) );
 		HD44780_Puts(10, 0, LCD_buff);
 		// print UE Limit
 		printedCharsLine[1] = snprintf_(LCD_buff, 9, "%.0f V", (localRef.fExtractVoltLimit) );
 		HD44780_Puts(10, 1, LCD_buff);
 		// print MODE
-		if (localRef.extMode == EXT_REGULATE)
+		if (localRef.extMode == EXT_REGULATE_IA)
 			printedCharsLine[2] = snprintf_(LCD_buff, 9, "REGULATE");
 		else if (localRef.extMode == EXT_STEADY)
 			printedCharsLine[2] = snprintf_(LCD_buff, 9, "STEADY");
@@ -478,7 +478,7 @@ void uiScreenUpdate(void)
 			_clearField(9, 3, printedCharsLine[3]);
 			break;
 
-		case SCREEN_SWEEP_UE:
+		case SCREEN_CONTROL_UE:
 			// line 1 - Extract voltage
 			_clearField(9, 0, printedCharsLine[0]);
 			printedCharsLine[0] = _printVoltage(System.meas.fExtractVolt, LCD_buff, 11);
@@ -530,7 +530,7 @@ void uiScreenUpdate(void)
 		case SCREEN_SET_UE:
 			_blinkText(0, 0, "SET UE:");
 			_clearField(10, 0, printedCharsLine[0]);
-			printedCharsLine[0] = snprintf_(LCD_buff, 10, "%.0f V", (localRef.fExtractVolt) );
+			printedCharsLine[0] = snprintf_(LCD_buff, 10, "%.0f V", (localRef.fExtractVoltUserRef) );
 			HD44780_Puts(10, 0, LCD_buff);
 			break;
 
@@ -544,7 +544,7 @@ void uiScreenUpdate(void)
 		case SCREEN_SET_UEMODE:
 			_blinkText(0, 2, "UE Mode:");
 			_clearField(10, 2, printedCharsLine[2]);
-			if (localRef.extMode == EXT_REGULATE)
+			if (localRef.extMode == EXT_REGULATE_IA)
 				printedCharsLine[2] = snprintf_(LCD_buff, 9, "REGULATE");
 			else if (localRef.extMode == EXT_STEADY)
 				printedCharsLine[2] = snprintf_(LCD_buff, 9, "STEADY");
@@ -587,7 +587,7 @@ void keyboardRoutine(void)
 		{
 			uKeysPressedTime[KEY_POWER]++;
 
-			if (uKeysPressedTime[KEY_POWER] > KB_POWEROFF_THRESHOLD)
+			if (uKeysPressedTime[KEY_POWER] > KB_HOLD_THRESHOLD)
 			{
 				HD44780_Clear();
 				HD44780_Puts(5, 2, "Power off");
@@ -611,8 +611,11 @@ void keyboardRoutine(void)
 					memcpy(&localRef, &System.ref, sizeof(localRef));
 					returnScreen = actualScreen;
 					//setDigit = 1;
-					if (actualScreen == SCREEN_SWEEP_UE)
-						uiScreenChange(settingsScreenGr2);
+					if (actualScreen == SCREEN_CONTROL_UE)
+					{
+						if (System.bSweepOn == false)
+							uiScreenChange(settingsScreenGr2);
+					}
 					else
 						uiScreenChange(settingsScreenGr1);
 				}
@@ -708,16 +711,27 @@ void keyboardRoutine(void)
 								setDigit = 1;	// 1 V resolution
 						}
 					}
-					else if (actualScreen == SCREEN_SWEEP_UE)
+					else if (actualScreen == SCREEN_CONTROL_UE)
 					{
-						if (System.bSweepOn == false)
+						switch (System.ref.extMode)
 						{
-							if (System.bHighSidePowered)
-								sweepUeInit();
-						}
-						else
-						{
-							sweepUeExit(false);
+						case EXT_REGULATE_IA:
+							break;
+
+						case EXT_STEADY:
+							break;
+
+						case EXT_SWEEP:
+							if (System.bSweepOn == false)
+							{
+								if (System.bHighSidePowered)
+									sweepUeInit();
+							}
+							else
+							{
+								sweepUeExit(false);
+							}
+							break;
 						}
 					}
 				}
@@ -728,7 +742,7 @@ void keyboardRoutine(void)
 			{	// count pressed key till it reach hold time
 				uKeysPressedTime[KEY_ENC]++;
 
-				if (uKeysPressedTime[KEY_ENC] >= KB_POWEROFF_THRESHOLD)
+				if (uKeysPressedTime[KEY_ENC] >= KB_HOLD_THRESHOLD)
 				{
 					if (HAL_GPIO_ReadPin(TP32_GPIO_Port, TP32_Pin) == GPIO_PIN_RESET)	// HV enable switch - toggle
 					{
@@ -741,7 +755,7 @@ void keyboardRoutine(void)
 					uKeysPressedTime[KEY_ENC] = 0;	// finish pressed counting
 				}
 			}
-		}
+		} // KEY_ENC
 	}
 }
 
@@ -776,21 +790,21 @@ void encoderKnob_turnCallback(void)
 		{	// change enum
 			if (levelB == GPIO_PIN_SET)
 			{	// left
-				if (localRef.extMode == EXT_REGULATE)
+				if (localRef.extMode == EXT_REGULATE_IA)
 					localRef.extMode = EXT_SWEEP;
 				else if (localRef.extMode == EXT_SWEEP)
 					localRef.extMode = EXT_STEADY;
 				else
-					localRef.extMode = EXT_REGULATE;
+					localRef.extMode = EXT_REGULATE_IA;
 			}
 			else
 			{	// right
-				if (localRef.extMode == EXT_REGULATE)
+				if (localRef.extMode == EXT_REGULATE_IA)
 					localRef.extMode = EXT_STEADY;
 				else if (localRef.extMode == EXT_STEADY)
 					localRef.extMode = EXT_SWEEP;
 				else
-					localRef.extMode = EXT_REGULATE;
+					localRef.extMode = EXT_REGULATE_IA;
 			}
 		}
 		else
@@ -805,7 +819,7 @@ void encoderKnob_turnCallback(void)
 			else if (actualScreen == SCREEN_SET_UP)
 				setValue = localRef.fPumpVolt;
 			else if (actualScreen == SCREEN_SET_UE)
-				setValue = localRef.fExtractVolt;
+				setValue = localRef.fExtractVoltUserRef;
 			else if (actualScreen == SCREEN_SET_UEMAX)
 				setValue = localRef.fExtractVoltLimit;
 
@@ -852,13 +866,19 @@ void encoderKnob_turnCallback(void)
 			// settings group 2 ////////////////////////////////////////////////////
 			else if (actualScreen == SCREEN_SET_UE)
 			{
-				if ((setValue < 2501)&&(setValue >= 0))//(setValue < 5001)	// 2.5 kV limit
-					localRef.fExtractVolt = (float)setValue;
+				uint32_t upperBound = (uint32_t)(localRef.fExtractVoltLimit);
+				if ((setValue <= upperBound)&&(setValue >= 0))		// 2.5 kV limit
+					localRef.fExtractVoltUserRef = (float)setValue;
 			}
 			else if (actualScreen == SCREEN_SET_UEMAX)
 			{
-				if ((setValue < 2501)&&(setValue >= 0))//(setValue < 5001)	// 2.5 kV limit
+				if ((setValue < 2501)&&(setValue >= 100))	// minimum 100 V, 2.5 kV limit
+				{
 					localRef.fExtractVoltLimit = (float)setValue;
+					if (localRef.fExtractVoltUserRef > localRef.fExtractVoltLimit)
+						localRef.fExtractVoltUserRef = localRef.fExtractVoltLimit;
+				}
+
 			}
 		}
 	}

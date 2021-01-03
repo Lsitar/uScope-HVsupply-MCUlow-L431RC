@@ -45,7 +45,7 @@ static struct {
 void initCoefficients(void)
 {
 	// MCU_LOW Ch0
-	fCoeffIa.gain = fCoeffIaDefault;	// [A/bit]
+	fCoeffIa.gain = fCoeffIaDefault * (10.0f/9.62f);	// (meas external ref / meas ADS)	// [A/bit]
 	fCoeffIa.offset = -37850;			// [bit]
 
 	// MCU_LOW Ch1

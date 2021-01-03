@@ -125,13 +125,19 @@ int main(void)
 
 	/* TODO
 	 * WiP:
-	 * - on sweep screen, on KEY_ENTER go to sweep limit setting
+	 * -
 	 *
 	 * bugs:
-	 * - voltage formating: always preserve place for sign (- for negative and space for positive)
+	 * - voltage formating: always preserve place for sign (- for negative and space for positive).
+	 * 		Align right, not left. At best, align to the decimal point in fixed place.
+	 * - add -5 V independent charge pump
 	 *
 	 * features:
+	 * -
+	 * - add buzzer to warn about HV voltage
 	 * - save & restore last setted values (flash reading & saving at power on/off)
+	 * - on ESC hold in main screen, load default settings and reset settings memory
+	 * 		(in case something will get corrupted and settings stuck in pernament error)
 	 */
 
   /* USER CODE END 1 */
@@ -732,6 +738,7 @@ void highSideStart(void)
 	uartReceiveFrameIT();
 #endif
 	regulatorInit();
+	regulatorInitCurrent();
 }
 
 

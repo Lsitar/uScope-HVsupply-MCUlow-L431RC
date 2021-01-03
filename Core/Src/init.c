@@ -31,9 +31,6 @@ void init_user( void )
 	memset(&System, 0x00, sizeof (System));
 
 	initCoefficients();
-	#ifdef USE_MOVAVG_IA_FILTER
-		movAvgInit();
-	#endif
 
 #ifdef MCU_HIGH
 
@@ -44,15 +41,34 @@ void init_user( void )
 	System.bHighSidePowered = false;
 	System.bCommunicationOk = false;
 
+#ifdef USE_MOVAVG_IA_FILTER
+	movAvgInit();
+#endif
+
+	System.meas.uAnodeCurrent = 0;
 	System.meas.fAnodeCurrent = NAN;
 	System.meas.fCathodeVolt = NAN;
-	System.meas.fExtractVolt = NAN;
 	System.meas.fFocusVolt = NAN;
 	System.meas.fPumpVolt = NAN;
+	System.meas.fExtractVolt = NAN;
+	System.meas.fExtractVoltIaRef = NAN;
+	System.meas.fExtractVoltUserRef = NAN;
+	System.meas.fExtractVoltLimit = NAN;
+	System.meas.extMode = EXT_REGULATE_IA;
 
 	memcpy(&System.sweepResult, &System.meas, sizeof(struct sRegulatedVal));
 
-//	System.ref.fCathodeVolt = -900.0f;
+	// TODO here may load previous settings from flash
+	System.ref.extMode = EXT_REGULATE_IA;
+	System.ref.uAnodeCurrent = 0;
+	System.ref.fAnodeCurrent = 0.0f;
+	System.ref.fCathodeVolt = -1000.0f;
+	System.ref.fExtractVolt = 0.0f;
+	System.ref.fExtractVoltIaRef = 0.0f;
+	System.ref.fExtractVoltUserRef = 0.0f;
+	System.ref.fExtractVoltLimit = 100.0f;
+	System.ref.fFocusVolt = 0.0f;
+	System.ref.fPumpVolt = 0.0f;
 
 	// output PWM
 	pwmSetDuty(PWM_CHANNEL_UC, 0.0f);

@@ -16,15 +16,23 @@ extern "C" {
 enum eScreen
 {
 	SCREEN_RESET = 0,
+	// main screens
 	SCREEN_1,	// UK Ia Pa
 	SCREEN_2,	// Ue Uf Up
-	SCREEN_SWEEP_IA,
+	SCREEN_CONTROL_UE,
+
+	// settings screens group 1
 	SCREEN_SET_IA,
 	SCREEN_SET_UC,
 	SCREEN_SET_UF,
 	SCREEN_SET_UP,
+
+	// settings screens group 2
 	SCREEN_SET_UE,
-	SCREEN_SET_SWEEP,
+	SCREEN_SET_UEMAX,
+	SCREEN_SET_UEMODE,
+
+	// text only screens
 	SCREEN_POWERON_1,
 	SCREEN_POWERON_2,
 	SCREEN_POWEROFF,

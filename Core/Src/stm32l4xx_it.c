@@ -417,7 +417,7 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	UNUSED(htim);
-	sweepUe();
+	sweepUePeriod();
 	regulatorPeriodCallback();
 }
 
