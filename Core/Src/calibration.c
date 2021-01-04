@@ -105,6 +105,13 @@ static float fMovAvgSum;
 static float fMovAvgBuff[MOVAVG_SIZE];
 uint32_t uMovAvgIndex;
 
+struct sMovAvg
+{
+	float fSum;
+	float fBuff[MOVAVG_SIZE];
+	uint32_t uIndex;
+};
+
 void movAvgInit(void)
 {
 	fMovAvgSum = 0.0f;

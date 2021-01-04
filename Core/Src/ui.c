@@ -48,7 +48,8 @@ static int32_t setDigit = 1;
 
 #define IS_SETTINGS_SCREEN_GROUP_2	(  (actualScreen == SCREEN_SET_UE)		\
 									|| (actualScreen == SCREEN_SET_UEMAX)   \
-									|| (actualScreen == SCREEN_SET_UEMODE))	\
+									|| (actualScreen == SCREEN_SET_UEMODE)	\
+									|| (actualScreen == SCREEN_SET_LOGGER))	\
 
 #define IS_SETTINGS_SCREEN		( IS_SETTINGS_SCREEN_GROUP_1 || IS_SETTINGS_SCREEN_GROUP_2 )
 
@@ -129,7 +130,7 @@ static void _changeScreenLeftRight(enum eKey key)
 	else if (actualScreen == SCREEN_SET_UE)
 	{
 		if (key == KEY_LEFT)
-			uiScreenChange(SCREEN_SET_UEMODE);
+			uiScreenChange(SCREEN_SET_LOGGER);
 		else if (key == KEY_RIGHT)
 			uiScreenChange(SCREEN_SET_UEMAX);
 	}
@@ -144,6 +145,13 @@ static void _changeScreenLeftRight(enum eKey key)
 	{
 		if (key == KEY_LEFT)
 			uiScreenChange(SCREEN_SET_UEMAX);
+		else if (key == KEY_RIGHT)
+			uiScreenChange(SCREEN_SET_LOGGER);
+	}
+	else if (actualScreen == SCREEN_SET_LOGGER)
+	{
+		if (key == KEY_LEFT)
+			uiScreenChange(SCREEN_SET_UEMODE);
 		else if (key == KEY_RIGHT)
 			uiScreenChange(SCREEN_SET_UE);
 	}
@@ -364,9 +372,11 @@ void uiScreenChange(enum eScreen newScreen)
 	case SCREEN_SET_UE:
 	case SCREEN_SET_UEMAX:
 	case SCREEN_SET_UEMODE:
+	case SCREEN_SET_LOGGER:
 		HD44780_Puts(0, 0, "SET UE:");
 		HD44780_Puts(0, 1, "UE Limit:");
 		HD44780_Puts(0, 2, "UE Mode:");
+		HD44780_Puts(0, 3, "Logger:");
 		// Need to print all values here, beacouse only one 'll be refreshed later.
 		// print UE
 		printedCharsLine[0] = snprintf_(LCD_buff, 9, "%.0f V", (localRef.fExtractVoltUserRef) );
@@ -376,12 +386,18 @@ void uiScreenChange(enum eScreen newScreen)
 		HD44780_Puts(10, 1, LCD_buff);
 		// print MODE
 		if (localRef.extMode == EXT_REGULATE_IA)
-			printedCharsLine[2] = snprintf_(LCD_buff, 9, "REGULATE");
+			printedCharsLine[2] = snprintf_(LCD_buff, 9, "REG. IA");
 		else if (localRef.extMode == EXT_STEADY)
-			printedCharsLine[2] = snprintf_(LCD_buff, 9, "STEADY");
+			printedCharsLine[2] = snprintf_(LCD_buff, 10, "STEADY UE");
 		else if (localRef.extMode == EXT_SWEEP)
-			printedCharsLine[2] = snprintf_(LCD_buff, 9, "SWEEP");
+			printedCharsLine[2] = snprintf_(LCD_buff, 9, "SWEEP UE");
 		HD44780_Puts(10, 2, LCD_buff);
+		// print LOGGER
+		if (localRef.loggerMode == LOGGER_IA)
+			printedCharsLine[3] = snprintf_(LCD_buff, 9, "IA");
+		else if (localRef.loggerMode == LOGGER_UE)
+			printedCharsLine[3] = snprintf_(LCD_buff, 9, "UE");
+		HD44780_Puts(10, 3, LCD_buff);
 		// correct blinking period
 		if (bBlink == true)
 		{
@@ -389,6 +405,7 @@ void uiScreenChange(enum eScreen newScreen)
 			if (newScreen == SCREEN_SET_UE) row = 0;
 			else if (newScreen == SCREEN_SET_UEMAX) row = 1;
 			else if (newScreen == SCREEN_SET_UEMODE) row = 2;
+			else if (newScreen == SCREEN_SET_LOGGER) row = 3;
 			_clearField(0, row, 7);
 		}
 		break;
@@ -545,12 +562,22 @@ void uiScreenUpdate(void)
 			_blinkText(0, 2, "UE Mode:");
 			_clearField(10, 2, printedCharsLine[2]);
 			if (localRef.extMode == EXT_REGULATE_IA)
-				printedCharsLine[2] = snprintf_(LCD_buff, 9, "REGULATE");
+				printedCharsLine[2] = snprintf_(LCD_buff, 9, "REG. IA");
 			else if (localRef.extMode == EXT_STEADY)
-				printedCharsLine[2] = snprintf_(LCD_buff, 9, "STEADY");
+				printedCharsLine[2] = snprintf_(LCD_buff, 10, "STEADY UE");
 			else if (localRef.extMode == EXT_SWEEP)
-				printedCharsLine[2] = snprintf_(LCD_buff, 9, "SWEEP");
+				printedCharsLine[2] = snprintf_(LCD_buff, 9, "SWEEP UE");
 			HD44780_Puts(10, 2, LCD_buff);
+			break;
+
+		case SCREEN_SET_LOGGER:
+			_blinkText(0, 3, "Logger:");
+			_clearField(10, 3, printedCharsLine[3]);
+			if (localRef.loggerMode == LOGGER_IA)
+				printedCharsLine[3] = snprintf_(LCD_buff, 9, "IA");
+			else if (localRef.loggerMode == LOGGER_UE)
+				printedCharsLine[3] = snprintf_(LCD_buff, 9, "UE");
+			HD44780_Puts(10, 3, LCD_buff);
 			break;
 
 		case SCREEN_POWERON_1:
@@ -808,6 +835,13 @@ void encoderKnob_turnCallback(void)
 				else
 					localRef.extMode = EXT_REGULATE_IA;
 			}
+		}
+		else if (actualScreen == SCREEN_SET_LOGGER)
+		{	// change enum
+			if (localRef.loggerMode == LOGGER_IA)
+				localRef.loggerMode = LOGGER_UE;
+			else
+				localRef.loggerMode = LOGGER_IA;
 		}
 		else
 		{	// change numeric values

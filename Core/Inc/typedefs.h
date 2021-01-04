@@ -10,6 +10,7 @@
 extern "C" {
 #endif
 
+#include "regulator.h"	// for eLoggerMode definition
 #include "ads131m0x.h"
 #include "ui.h"
 

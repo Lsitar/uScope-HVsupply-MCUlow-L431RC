@@ -393,7 +393,10 @@ void loggerPeriod(void)
 		// save sample
 		if (loggerBuffIndex < LOGGER_BUFF_SIZE)
 		{
-			loggerBuffIa[loggerBuffIndex++] = System.meas.fAnodeCurrent;
+			if (System.ref.loggerMode == LOGGER_UE)
+				loggerBuffIa[loggerBuffIndex++] = System.meas.fExtractVolt;
+			else
+				loggerBuffIa[loggerBuffIndex++] = System.meas.fAnodeCurrent;
 		}
 		else
 		// exit

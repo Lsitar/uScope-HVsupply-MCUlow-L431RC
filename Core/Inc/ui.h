@@ -31,6 +31,7 @@ enum eScreen
 	SCREEN_SET_UE,
 	SCREEN_SET_UEMAX,
 	SCREEN_SET_UEMODE,
+	SCREEN_SET_LOGGER,
 
 	// text only screens
 	SCREEN_POWERON_1,
