@@ -380,29 +380,43 @@ void sweepUePeriod(void)
 
 void loggerPeriod(void)
 {
-	static uint32_t uTimestamp;
+	static uint32_t uTimestampText;
+	static uint32_t uIntervalCnt;
+#ifdef LOGGER_250ms
+	const uint32_t uLogInterval = 25;
+#else
+	const uint32_t uLogInterval = 1;
+#endif
+
 
 	if (System.bLoggerOn)
 	{
-		// print something to indicate logging progress
-		if (HAL_GetTick() - uTimestamp > 1000)
+		uIntervalCnt++;
+		if (uIntervalCnt >=  uLogInterval)
 		{
-			uTimestamp = HAL_GetTick();
-			ITM_SendChar('.');
-		}
-		// save sample
-		if (loggerBuffIndex < LOGGER_BUFF_SIZE)
-		{
-			if (System.ref.loggerMode == LOGGER_UE)
-				loggerBuffIa[loggerBuffIndex++] = System.meas.fExtractVolt;
+			uIntervalCnt = 0;
+
+			// print something to indicate logging progress
+			if (HAL_GetTick() - uTimestampText > 1000)
+			{
+				uTimestampText = HAL_GetTick();
+				ITM_SendChar('.');
+			}
+
+			// save sample
+			if (loggerBuffIndex < LOGGER_BUFF_SIZE)
+			{
+				if (System.ref.loggerMode == LOGGER_UE)
+					loggerBuffIa[loggerBuffIndex++] = System.meas.fExtractVolt;
+				else
+					loggerBuffIa[loggerBuffIndex++] = System.meas.fAnodeCurrent;
+			}
 			else
-				loggerBuffIa[loggerBuffIndex++] = System.meas.fAnodeCurrent;
-		}
-		else
-		// exit
-		{
-			SPAM((" Logger full.\n"));
-			System.bLoggerOn = false;
+			// exit
+			{
+				SPAM((" Logger full.\n"));
+				System.bLoggerOn = false;
+			}
 		}
 	}
 }

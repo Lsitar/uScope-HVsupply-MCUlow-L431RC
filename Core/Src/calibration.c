@@ -100,52 +100,56 @@ void calibOffset(void)
 
 
 
-#define MOVAVG_SIZE		10
-static float fMovAvgSum;
-static float fMovAvgBuff[MOVAVG_SIZE];
-uint32_t uMovAvgIndex;
+/* Moving average filter -----------------------------------------------------*/
 
-struct sMovAvg
-{
-	float fSum;
-	float fBuff[MOVAVG_SIZE];
-	uint32_t uIndex;
-};
+struct sMovAvg movAvgIa, movAvgUc, movAvgUe, movAvgUf;
 
-void movAvgInit(void)
+void movAvgInit(struct sMovAvg* movAvg)
 {
-	fMovAvgSum = 0.0f;
-	uMovAvgIndex = 0;
+	movAvg->fSum = 0.0f;
+	movAvg->uIndex = 0;
+//	fMovAvgSum = 0.0f;
+//	uMovAvgIndex = 0;
 
 	// set buff to 0.0 float (not 0x00 hex)
 	for (uint32_t i=0; i<MOVAVG_SIZE; i++)
-		fMovAvgBuff[i] = 0.0f;
-	;
+//		fMovAvgBuff[i] = 0.0f;
+		movAvg->fBuff[i] = 0.0f;
 }
 
-float movAvgAddSample(float newSample)
+
+
+float movAvgAddSample(struct sMovAvg* movAvg, float newSample)
 {
 	// remove oldest sample from sum
-	fMovAvgSum -= fMovAvgBuff[uMovAvgIndex];
+//	fMovAvgSum -= fMovAvgBuff[uMovAvgIndex];
+	movAvg->fSum -= movAvg->fBuff[movAvg->uIndex];
 	// replace the old sample with new
-	fMovAvgBuff[uMovAvgIndex] = newSample;
+//	fMovAvgBuff[uMovAvgIndex] = newSample;
+	movAvg->fBuff[movAvg->uIndex] = newSample;
 	// add newest sample to sum
-	fMovAvgSum += fMovAvgBuff[uMovAvgIndex];
+//	fMovAvgSum += fMovAvgBuff[uMovAvgIndex];
+	movAvg->fSum += newSample;
 	// point to next (oldest) sample
-	uMovAvgIndex++;
+//	uMovAvgIndex++;
+	movAvg->uIndex++;
 	// wrap buffer
-	if (uMovAvgIndex >= MOVAVG_SIZE)
+//	if (uMovAvgIndex >= MOVAVG_SIZE)
+	if (movAvg->uIndex >= MOVAVG_SIZE)
 	{
-		// TEST - numeric error may accumulate and it may be necessary to re-calculate the sum after some time
-		fMovAvgSum = 0.0f;
+		// numeric error may accumulate and it may be necessary to re-calculate the sum after some time
+//		fMovAvgSum = 0.0f;
+		movAvg->fSum = 0.0f;
 		for (uint32_t i=0; i<MOVAVG_SIZE; i++)
-			fMovAvgSum += fMovAvgBuff[i];
-		// END TEST
+//			fMovAvgSum += fMovAvgBuff[i];
+			movAvg->fSum += movAvg->fBuff[i];
 
-		uMovAvgIndex = 0;
+//		uMovAvgIndex = 0;
+		movAvg->uIndex = 0;
 	}
 
-	return fMovAvgSum / ((float)MOVAVG_SIZE);
+//	return fMovAvgSum / ((float)MOVAVG_SIZE);
+	return movAvg->fSum / ((float)MOVAVG_SIZE);
 }
 
 
@@ -162,12 +166,17 @@ void calcualteSamples(void)
 #else // MCU_LOW
 
 	#ifdef USE_MOVAVG_IA_FILTER
-		System.meas.fAnodeCurrent = movAvgAddSample(fCoeffIa.gain * (System.ads.data.channel0 - fCoeffIa.offset));
+		System.meas.fAnodeCurrent = movAvgAddSample(&movAvgIa, fCoeffIa.gain * (System.ads.data.channel0 - fCoeffIa.offset));
 	#else
 		System.meas.fAnodeCurrent = fCoeffIa.gain * (System.ads.data.channel0 - fCoeffIa.offset);
 	#endif
 
-	System.meas.fCathodeVolt = fCoeffUc.gain * (System.ads.data.channel1 - fCoeffUc.offset);
+	#ifdef USE_MOVAVG_UC_FILTER
+			System.meas.fCathodeVolt = movAvgAddSample(&movAvgUc, fCoeffUc.gain * (System.ads.data.channel1 - fCoeffUc.offset));
+	#else
+			System.meas.fCathodeVolt = fCoeffUc.gain * (System.ads.data.channel1 - fCoeffUc.offset);
+	#endif
+
     //pidMeasOscPeriod(PWM_CHANNEL_UC);
 	//pidMeasOscPeriod(REG_IA);
 

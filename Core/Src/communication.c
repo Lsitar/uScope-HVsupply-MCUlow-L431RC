@@ -6,6 +6,7 @@
  */
 
 #include <string.h>
+#include "calibration.h"
 #include "communication.h"
 #include "main.h"		// for uart handle
 #include "regulator.h"
@@ -258,8 +259,17 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	else
 	{
 		ledRed(OFF);
+#ifdef USE_MOVAVG_UE_FILTER
+		System.meas.fExtractVolt = movAvgAddSample(&movAvgUe, commFrame.data.values.fExtVolt);
+#else
 		memcpy(&System.meas.fExtractVolt, &commFrame.data.values.fExtVolt, sizeof(float));
+#endif
+
+#ifdef USE_MOVAVG_UF_FILTER
+		System.meas.fFocusVolt = movAvgAddSample(&movAvgUf, commFrame.data.values.fFocusVolt);
+#else
 		memcpy(&System.meas.fFocusVolt, &commFrame.data.values.fFocusVolt, sizeof(float));
+#endif
 		System.bCommunicationOk = true;
 //		pidMeasOscPeriod(PWM_CHANNEL_UE);
 //		pidMeasOscPeriod(PWM_CHANNEL_UF);

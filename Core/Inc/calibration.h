@@ -11,9 +11,27 @@
 extern "C" {
 #endif
 
+#include <stdint.h>
+
 /* Config --------------------------------------------------------------------*/
 
+#define MOVAVG_SIZE		10		// one size for all (may be modified to individual...)
+
 #define USE_MOVAVG_IA_FILTER
+#define USE_MOVAVG_UC_FILTER
+#define USE_MOVAVG_UE_FILTER
+#define USE_MOVAVG_UF_FILTER
+
+/* Exported types ------------------------------------------------------------*/
+
+struct sMovAvg
+{
+	float fSum;
+	float fBuff[MOVAVG_SIZE];
+	uint32_t uIndex;
+};
+
+extern struct sMovAvg movAvgIa, movAvgUc, movAvgUe, movAvgUf;
 
 /* Exported functions --------------------------------------------------------*/
 
@@ -35,7 +53,10 @@ void initCoefficients(void);
  * @brief	Initializes Moving Average filter of Anode current samples.
  * 			Re-sets its variables to zero.
  */
-void movAvgInit(void);
+void movAvgInit(struct sMovAvg* movAvg);
+//void movAvgInit(void);
+
+float movAvgAddSample(struct sMovAvg* movAvg, float newSample);
 
 
 

@@ -16,6 +16,8 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 
+#define LOGGER_250ms	// else 10 ms
+
 enum eLoggerMode
 {
 	LOGGER_IA,

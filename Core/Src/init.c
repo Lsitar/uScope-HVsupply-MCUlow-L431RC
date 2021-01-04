@@ -44,7 +44,10 @@ void init_user( void )
 	System.bSweepOn = false;
 
 #ifdef USE_MOVAVG_IA_FILTER
-	movAvgInit();
+	movAvgInit(&movAvgIa);
+#endif
+#ifdef USE_MOVAVG_UE_FILTER
+	movAvgInit(&movAvgUe);
 #endif
 
 	System.meas.uAnodeCurrent = 0;
