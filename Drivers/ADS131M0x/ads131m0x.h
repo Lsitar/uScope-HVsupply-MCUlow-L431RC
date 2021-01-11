@@ -44,7 +44,7 @@
 // Custom libraries
 #include "hal.h"
 
-//void calcualteSamples(void);
+
 
 //****************************************************************************
 //
@@ -1642,13 +1642,15 @@ uint16_t    adsSendCommand(uint16_t op_code);
 bool        adsReadData(adsChannelData_t *);
 bool		adsReadDataOptimized(adsChannelData_t *);
 void		adsReadDataIT(void);
-bool adsReadDataITcallback(adsChannelData_t *);
+bool 		adsReadDataITcallback(adsChannelData_t *);
+void 		adsReadDataDMA(void);
 uint16_t    adsReadSingleRegister(uint8_t address);
 void        adsWriteSingleRegister(uint8_t address, uint16_t data);
 bool        adsLockRegisters(void);
 bool        adsUnlockRegisters(void);
 void        adsResetSoft(void);
-uint16_t    calculateCRC(const uint8_t dataBytes[], uint8_t numberBytes, uint16_t initialValue);
+uint16_t    adsCalculateCRC(const uint8_t dataBytes[], uint8_t numberBytes, uint16_t initialValue);
+uint16_t	adsCalculateCRCfast(const uint8_t dataBytes[], uint8_t numberBytes);
 uint16_t    registerMapGetValue(uint8_t address);
 void        registerMapRestoreDefaults(void);
 

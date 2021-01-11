@@ -160,9 +160,6 @@ void calcualteSamples(void)
     System.meas.fExtractVolt = fCoeffUe.gain * (System.ads.data.channel0 - fCoeffUe.offset);
     System.meas.fFocusVolt = fCoeffUf.gain * (System.ads.data.channel1 - fCoeffUf.offset);
 
-    if (uartIsIdle())
-    	sendResults();
-
 #else // MCU_LOW
 
 	#ifdef USE_MOVAVG_IA_FILTER

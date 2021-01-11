@@ -39,7 +39,10 @@ extern "C" {
 /* USER CODE BEGIN ET */
 
 // config
-//#define MCU_HIGH	// switch to code for High side MCU
+#define MCU_HIGH	// switch to code for High side MCU
+//#define ADS_SPI_USE_INT		// read ADS using SPI interrupts
+#define ADS_SPI_USE_DMA
+#define ADS_CHECK_CRC
 
 /* USER CODE END ET */
 

@@ -64,6 +64,8 @@
 /* External variables --------------------------------------------------------*/
 extern ADC_HandleTypeDef hadc1;
 extern I2C_HandleTypeDef hi2c1;
+extern DMA_HandleTypeDef hdma_spi1_rx;
+extern DMA_HandleTypeDef hdma_spi1_tx;
 extern SPI_HandleTypeDef hspi1;
 extern TIM_HandleTypeDef htim6;
 extern UART_HandleTypeDef huart1;
@@ -250,6 +252,34 @@ void EXTI4_IRQHandler(void)
 }
 
 /**
+  * @brief This function handles DMA1 channel2 global interrupt.
+  */
+void DMA1_Channel2_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA1_Channel2_IRQn 0 */
+
+  /* USER CODE END DMA1_Channel2_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_spi1_rx);
+  /* USER CODE BEGIN DMA1_Channel2_IRQn 1 */
+
+  /* USER CODE END DMA1_Channel2_IRQn 1 */
+}
+
+/**
+  * @brief This function handles DMA1 channel3 global interrupt.
+  */
+void DMA1_Channel3_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA1_Channel3_IRQn 0 */
+
+  /* USER CODE END DMA1_Channel3_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_spi1_tx);
+  /* USER CODE BEGIN DMA1_Channel3_IRQn 1 */
+
+  /* USER CODE END DMA1_Channel3_IRQn 1 */
+}
+
+/**
   * @brief This function handles ADC1 global interrupt.
   */
 void ADC1_IRQHandler(void)
@@ -374,19 +404,59 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		if (System.ads.ready == true)
 		{
 #ifdef MCU_HIGH
-			adsReadDataOptimized(&System.ads.data);
-#else
-//			testpin29(true);
-//			adsReadData(&System.ads.data);
-			adsReadDataOptimized(&System.ads.data);
-//			adsReadDataIT();
-//			testpin29(false);
-#endif
-//			calibOffset();
-			calcualteSamples();
-		}
+	#ifdef ADS_SPI_USE_INT
+			adsReadDataIT();
+	#elif defined (ADS_SPI_USE_DMA)
+			adsReadDataDMA();
+	#else
+			//adsReadDataOptimized(&System.ads.data);
+			static uint32_t cntSent;
+			static uint32_t cntSkipped;
+			static uint32_t cntWrong;
 
-		ledBlue(BLINK);
+			if (true == adsReadDataITcallback(&System.ads.data))
+			{
+				calcualteSamples();
+				ledRed(OFF);
+				ledBlue(BLINK);
+				if (uartIsIdle())
+				{
+					sendResults();
+					cntSent++;
+				}
+				else
+					cntSkipped++;
+			}
+			else
+			{
+				cntWrong++;
+				ledRed(ON);
+			}
+	#endif
+#else
+
+			testpin29(true);
+	#ifdef ADS_SPI_USE_INT
+			adsReadDataIT();
+	#elif defined (ADS_SPI_USE_DMA)
+			adsReadDataDMA();
+	#else
+			if (true == adsReadDataOptimized(&System.ads.data))
+			{
+				ledBlue(BLINK);
+//				calibOffset();
+				calcualteSamples();
+			}
+			else
+			{
+				// wrong crc
+			}
+
+	#endif
+			testpin29(false);
+#endif
+
+		}
 	}
 	else if (GPIO_Pin == ENC_CHA_EXTI0_Pin)
 	{
@@ -402,15 +472,106 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 {
+	UNUSED(hspi);
 #ifdef MCU_HIGH
-	UNUSED(hspi);
+	#if defined (ADS_SPI_USE_INT) || defined (ADS_SPI_USE_DMA)
+
+		static uint32_t cntSent;
+		static uint32_t cntSkipped;
+		static uint32_t cntWrong;
+
+		if (true == adsReadDataITcallback(&System.ads.data))
+		{
+			calcualteSamples();
+			ledRed(OFF);
+			ledBlue(BLINK);
+			if (uartIsIdle())
+			{
+				sendResults();
+				cntSent++;
+			}
+			else
+				cntSkipped++;
+		}
+		else
+		{
+			cntWrong++;
+			ledRed(ON);
+		}
+	#endif
+
 #else
-	UNUSED(hspi);
-//	testpin29(true);
-//	adsReadDataITcallback(&System.ads.data);
-//	testpin29(false);
+
+	#if defined (ADS_SPI_USE_INT) || defined (ADS_SPI_USE_DMA)
+		testpin29(true);
+//		adsSyncPulse();		// prevent occasionally Overrun error
+		if (true == adsReadDataITcallback(&System.ads.data))
+		{
+//			calibOffset();
+			calcualteSamples();
+			ledRed(OFF);
+		}
+		else
+		{	// wrong crc
+			ITM_SendChar('*');
+		}
+		ledBlue(BLINK);
+		testpin29(false);
+	#endif
+
 #endif // MCU_HIGH
 }
+
+
+
+#if defined (ADS_SPI_USE_INT) || defined (ADS_SPI_USE_DMA)
+/*
+ * 115 - 216 us with printf (!)
+ * 10 us without printf (y)
+ */
+void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
+{
+//	testpin29(true);
+//	SPAM(("ADS clbk err: %u\n", hspi->ErrorCode)); // ADS clbk err: 4
+
+//	System.ads.ready = false;
+//	System.ads.error = true;
+//	HAL_NVIC_DisableIRQ(EXTI4_IRQn);
+	adsSetCS(HIGH);
+	ledBlue(OFF);
+	ledRed(ON);
+
+//	uint32_t errno = HAL_SPI_GetError(hspi);
+//	SPAM(("ADS clbk err: "));
+//	if (errno & HAL_SPI_ERROR_MODF)
+//		SPAM(("MODF, "));
+//	if (errno & HAL_SPI_ERROR_CRC)
+//		SPAM(("CRC, "));
+//	if (errno & HAL_SPI_ERROR_OVR)
+//		SPAM(("OVR, "));
+//	if (errno & HAL_SPI_ERROR_FRE)
+//		SPAM(("FRE, "));
+//	if (errno & HAL_SPI_ERROR_DMA)
+//		SPAM(("DMA, "));
+//	if (errno & HAL_SPI_ERROR_FLAG)
+//		SPAM(("FLAG, "));
+//	if (errno & HAL_SPI_ERROR_ABORT)
+//		SPAM(("ABORT, "));		/* error during Abort procedure */
+//	SPAM((".\n"));
+
+#ifdef ADS_SPI_USE_DMA
+	if (HAL_OK != HAL_SPI_DMAStop(&hspi1))
+#elif defined (ADS_SPI_USE_INT)
+	if (HAL_OK != HAL_SPI_Abort_IT(&hspi1))
+#endif
+	{
+		SPAM(("HAL_SPI_Abort error\n"));
+	}
+	adsSyncPulse(); // according to ADS datasheet it doesnt do much, but somehow helps here
+
+//	testpin29(false);
+}
+#endif
 
 
 
@@ -424,7 +585,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	sweepUePeriod();
 	regulatorPeriodCallback();
 }
-
 
 /* USER CODE END 1 */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

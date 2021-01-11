@@ -63,34 +63,6 @@ static uint8_t adsDataTx[sizeof(adsDataRx)];
 
 static uint32_t uTimerProtection;
 
-/* Calibration code ----------------------------------------------------------*/
-
-//typedef enum
-//{
-//	GAIN	= 0,
-//	OFFSET	= 1,
-//} teCoeffIndex;
-
-//typedef struct
-//{
-//	float gain;
-//	int32_t offset;
-//} tsCoeff;
-//
-//// default coefficients
-//const float fCoeffUcDefault = 1.2f * (100e+3/50e+3) * (500e+6/180e+3) / ((float)(1u << 23));	// [V/bit] // 1.08 V on ADC at 6 kV in
-//const float fCoeffUeDefault = 1.2f * (100e+3/24e+3) * (100e+6/76744.2f) / ((float)(1u << 23));	// [V/bit] // 1.16 V on ADC at 6 kV in
-//const float fCoeffUfDefault = 1.2f * (100e+3/24e+3) * (100e+6/76744.2f) / ((float)(1u << 23));	// [V/bit] // 1.16 V on ADC at 6 kV in
-//const float fCoeffIaDefault = (-1.0f) * 1.2f * (100e+3/47e+3) * (1.0f/51e+3) / ((float)(1u << 23));	// [A/bit] // 1.1985 V on ADC at 50 uA in
-//const float fCoeffUpDefault = 1.0f/((6000.0f/12.0f) * (16300.0f/4300.0f) * 3.3f);	// [duty/V] // 0.959286 duty at 6 kV out and 3.3V ref
-//
-//// coeff variables
-//tsCoeff fCoeffUc;
-//tsCoeff fCoeffUe;
-//tsCoeff fCoeffUf;
-//tsCoeff fCoeffIa;
-//tsCoeff fCoeffUp;
-
 //******************************************************************************
 //
 // Internal function prototypes
@@ -138,6 +110,7 @@ uint16_t registerMapGetValue(uint8_t address)
  */
 void adsStartup(void)
 {
+	uint16_t reg;
 	uint16_t response;
 	uint8_t uChannelsNum;
 
@@ -153,7 +126,11 @@ void adsStartup(void)
 	UNUSED(response);
 
 	// disable unused channels, set OSR
-	uint16_t reg = CLOCK_CH0_EN_ENABLED + CLOCK_CH1_EN_ENABLED + CLOCK_XTAL_DIS_ENABLED + CLOCK_OSR_16384 + CLOCK_PWR_HR;
+#if defined (ADS_SPI_USE_INT) || defined (ADS_SPI_USE_DMA)
+	reg = CLOCK_CH0_EN_ENABLED + CLOCK_CH1_EN_ENABLED + CLOCK_XTAL_DIS_ENABLED + CLOCK_OSR_2048 + CLOCK_PWR_HR;
+#else
+	reg = CLOCK_CH0_EN_ENABLED + CLOCK_CH1_EN_ENABLED + CLOCK_XTAL_DIS_ENABLED + CLOCK_OSR_16384 + CLOCK_PWR_HR;
+#endif
 	adsWriteSingleRegister(CLOCK_ADDRESS, reg);
 
 	/* (OPTIONAL) Check STATUS register for faults */
@@ -275,7 +252,7 @@ bool adsReadData(adsChannelData_t *DataStruct)
 
 #ifdef ENABLE_CRC_IN
     // Build CRC word (only if "RX_CRC_EN" register bit is enabled)
-    uint16_t crcWordIn = calculateCRC(&DataTx[0], bytesPerWord * 2, 0xFFFF);
+    uint16_t crcWordIn = adsCalculateCRC(&DataTx[0], bytesPerWord * 2, 0xFFFF);
     crcTx[0] = upperByte(crcWordIn);
     crcTx[1] = lowerByte(crcWordIn);
 #endif
@@ -293,7 +270,7 @@ bool adsReadData(adsChannelData_t *DataStruct)
 
     // (OPTIONAL) Do something with the response (STATUS) word.
     // ...Here we only use the response for calculating the CRC-OUT
-    //uint16_t crcWord = calculateCRC(&dataRx[0], bytesPerWord, 0xFFFF);
+    //uint16_t crcWord = adsCalculateCRC(&dataRx[0], bytesPerWord, 0xFFFF);
 
     // (OPTIONAL) Ignore CRC error checking
     uint16_t crcWord = 0;
@@ -305,7 +282,7 @@ bool adsReadData(adsChannelData_t *DataStruct)
 //    }
     HAL_SPI_TransmitReceive(&hspi1, dataTx, dataRx, bytesPerWord, 10);
     DataStruct->channel0 = signExtend(&dataRx[0]);
-    //crcWord = calculateCRC(&dataRx[0], bytesPerWord, crcWord);
+    //crcWord = adsCalculateCRC(&dataRx[0], bytesPerWord, crcWord);
 
 #if (CHANNEL_COUNT > 1)
 
@@ -316,7 +293,7 @@ bool adsReadData(adsChannelData_t *DataStruct)
 //    }
     HAL_SPI_TransmitReceive(&hspi1, dataTx, dataRx, bytesPerWord, 10);
     DataStruct->channel1 = signExtend(&dataRx[0]);
-    //crcWord = calculateCRC(&dataRx[0], bytesPerWord, crcWord);
+    //crcWord = adsCalculateCRC(&dataRx[0], bytesPerWord, crcWord);
 
 #endif
 #if (CHANNEL_COUNT > 2)
@@ -328,7 +305,7 @@ bool adsReadData(adsChannelData_t *DataStruct)
 //    }
     HAL_SPI_TransmitReceive(&hspi1, dataTx, dataRx, bytesPerWord, 10);
     DataStruct->channel2 = signExtend(&dataRx[0]);
-    //crcWord = calculateCRC(&dataRx[0], bytesPerWord, crcWord);
+    //crcWord = adsCalculateCRC(&dataRx[0], bytesPerWord, crcWord);
 
 #endif
 #if (CHANNEL_COUNT > 3)
@@ -340,7 +317,7 @@ bool adsReadData(adsChannelData_t *DataStruct)
 //    }
     HAL_SPI_TransmitReceive(&hspi1, dataTx, dataRx, bytesPerWord, 10);
     DataStruct->channel3 = signExtend(&dataRx[0]);
-    //crcWord = calculateCRC(&dataRx[0], bytesPerWord, crcWord);
+    //crcWord = adsCalculateCRC(&dataRx[0], bytesPerWord, crcWord);
 
 #endif
 #if (CHANNEL_COUNT > 4)
@@ -352,7 +329,7 @@ bool adsReadData(adsChannelData_t *DataStruct)
 //    }
     HAL_SPI_TransmitReceive(&hspi1, dataTx, dataRx, bytesPerWord, 10);
     DataStruct->channel4 = signExtend(&dataRx[0]);
-    //crcWord = calculateCRC(&dataRx[0], bytesPerWord, crcWord);
+    //crcWord = adsCalculateCRC(&dataRx[0], bytesPerWord, crcWord);
 
 #endif
 #if (CHANNEL_COUNT > 5)
@@ -364,7 +341,7 @@ bool adsReadData(adsChannelData_t *DataStruct)
 //    }
     HAL_SPI_TransmitReceive(&hspi1, dataTx, dataRx, bytesPerWord, 10);
     DataStruct->channel5 = signExtend(&dataRx[0]);
-    //crcWord = calculateCRC(&dataRx[0], bytesPerWord, crcWord);
+    //crcWord = adsCalculateCRC(&dataRx[0], bytesPerWord, crcWord);
 
 #endif
 #if (CHANNEL_COUNT > 6)
@@ -375,7 +352,7 @@ bool adsReadData(adsChannelData_t *DataStruct)
         dataRx[i] = spiSendReceiveByte(0x00);
     }
     DataStruct->channel6 = signExtend(&dataRx[0]);
-    //crcWord = calculateCRC(&dataRx[0], bytesPerWord, crcWord);
+    //crcWord = adsCalculateCRC(&dataRx[0], bytesPerWord, crcWord);
 
 #endif
 #if (CHANNEL_COUNT > 7)
@@ -386,7 +363,7 @@ bool adsReadData(adsChannelData_t *DataStruct)
         dataRx[i] = spiSendReceiveByte(0x00);
     }
     DataStruct->channel7 = signExtend(&dataRx[0]);
-    //crcWord = calculateCRC(&dataRx[0], bytesPerWord, crcWord);
+    //crcWord = adsCalculateCRC(&dataRx[0], bytesPerWord, crcWord);
 
 #endif
 
@@ -401,7 +378,7 @@ bool adsReadData(adsChannelData_t *DataStruct)
     /* NOTE: If we continue calculating the CRC with a matching CRC, the result should be zero.
      * Any non-zero result will indicate a mismatch.
      */
-    //crcWord = calculateCRC(&dataRx[0], bytesPerWord, crcWord);
+    //crcWord = adsCalculateCRC(&dataRx[0], bytesPerWord, crcWord);
 
     /* Set the nCS pin HIGH */
     adsSetCS(HIGH);
@@ -421,6 +398,8 @@ bool adsReadData(adsChannelData_t *DataStruct)
 bool adsReadDataOptimized(adsChannelData_t *DataStruct)
 {
     uint32_t i;
+	uint16_t crcCalc;
+	UNUSED(crcCalc);
 
     memset(adsDataRx, 0x00, sizeof(adsDataRx));
     memset(adsDataTx, 0x00, sizeof(adsDataTx));
@@ -447,8 +426,19 @@ bool adsReadDataOptimized(adsChannelData_t *DataStruct)
 
     adsSetCS(HIGH);
 
-    // Returns true when a CRC error occurs
-    return false;
+#ifdef ADS_CHECK_CRC
+    //crcCalc = adsCalculateCRC(&adsDataRx[0], i, 0xFFFF);
+    crcCalc = adsCalculateCRCfast(&adsDataRx[0], i);
+
+    if (crcCalc != DataStruct->crc)
+    {
+    	adsSyncPulse();
+    	return false;
+    }
+#endif
+
+    // Returns false when a CRC error occurs
+    return true;
 }
 
 
@@ -469,11 +459,15 @@ _OPT_OFF void adsReadDataIT(void)
 
 	if (retVal != HAL_OK)
 	{
-		SPAM(("ADS IT error: %u\n", retVal));
+		SPAM(("ADS RX_IT init error\n"));
+		//SPAM(("ADS RX_IT init error: %u\n", retVal));
+		adsSetCS(HIGH);
+		HAL_NVIC_DisableIRQ(EXTI4_IRQn);
+		HAL_SPI_Abort_IT(&hspi1);	// Rx may be in progress in interrupt mode, will cause HardFault if come
+		// Set flags and stop ADS, it will be re-launched in non-blocking main() loop
 		System.ads.ready = false;
 		System.ads.error = true;
-		HAL_NVIC_DisableIRQ(EXTI4_IRQn);
-		adsSetCS(HIGH);
+
 //		adsSyncPulse();
 //		adsSetCS(LOW);
 //		retVal = HAL_SPI_Abort_IT(&hspi1);
@@ -516,6 +510,9 @@ _OPT_OFF void adsReadDataIT(void)
  */
 _OPT_O3 bool adsReadDataITcallback(adsChannelData_t *DataStruct)
 {
+	uint16_t crcCalc;
+	UNUSED(crcCalc);
+
     uint32_t i = 0;
     DataStruct->response = combineBytes(adsDataRx[i], adsDataRx[i+1]);
     i += bytesPerWord;
@@ -533,25 +530,55 @@ _OPT_O3 bool adsReadDataITcallback(adsChannelData_t *DataStruct)
     i += bytesPerWord;
     DataStruct->crc = combineBytes(adsDataRx[i], adsDataRx[i+1]);
 
-//    DataStruct->response = combineBytes(adsDataRx[0], adsDataRx[1]);
-//    DataStruct->channel0 = signExtend(&adsDataRx[3]);
-//    DataStruct->channel1 = signExtend(&adsDataRx[6]);
-//    DataStruct->channel2 = signExtend(&adsDataRx[9]);
-//    DataStruct->channel3 = signExtend(&adsDataRx[12]);
-//    DataStruct->channel4 = signExtend(&adsDataRx[15]);
-//    DataStruct->channel5 = signExtend(&adsDataRx[18]);
-//    DataStruct->crc = combineBytes(adsDataRx[21], adsDataRx[22]);
-
     adsSetCS(HIGH);
 
-    if (HAL_GetTick() - uTimerProtection > 1)
-    {
-    	SPAM(("ADS Timeout\n"));
-//    	adsStartup();
-    }
+//    if (HAL_GetTick() - uTimerProtection > 1)
+//    {
+//    	SPAM(("ADS Timeout\n"));
+////    	adsStartup();
+//    }
 
-    // Returns true when a CRC error occurs
-    return false;
+#ifdef ADS_CHECK_CRC
+//    crcCalc = adsCalculateCRC(&adsDataRx[0], i, 0xFFFF);
+    crcCalc = adsCalculateCRCfast(&adsDataRx[0], i);
+
+    if (crcCalc != DataStruct->crc)
+    {
+    	//adsSyncPulse();
+    	return false;
+    }
+#endif
+
+    // Returns false when a CRC error occurs
+    return true;
+}
+
+
+
+/*
+ * Triggers SPI transmission with DMA.
+ */
+_OPT_OFF void adsReadDataDMA(void)
+{
+	HAL_StatusTypeDef retVal;
+    memset(adsDataRx, 0x00, sizeof(adsDataRx));
+    memset(adsDataTx, 0x00, sizeof(adsDataTx));
+	adsSetCS(LOW);
+	// read 8 words
+	retVal = HAL_SPI_TransmitReceive_DMA(&hspi1, adsDataTx, adsDataRx, 8* 3);
+//	retVal = HAL_SPI_Receive_DMA(&hspi1, adsDataRx, 8*3);
+
+	if (retVal != HAL_OK)
+	{
+		adsSetCS(HIGH);
+		HAL_NVIC_DisableIRQ(EXTI4_IRQn);
+		HAL_SPI_DMAStop(&hspi1);
+		SPAM(("ADS RX_DMA init error\n"));
+		//SPAM(("ADS RX_IT init error: %u\n", retVal));
+		// Set flags and stop ADS, it will be re-launched in non-blocking main() loop
+		System.ads.ready = false;
+		System.ads.error = true;
+	}
 }
 
 
@@ -760,7 +787,7 @@ bool adsUnlockRegisters(void)
 //
 //! Calculates the 16-bit CRC for the selected CRC polynomial.
 //!
-//! \fn uint16_t calculateCRC(const uint8_t dataBytes[], uint8_t numberBytes, uint16_t initialValue)
+//! \fn uint16_t adsCalculateCRC(const uint8_t dataBytes[], uint8_t numberBytes, uint16_t initialValue)
 //!
 //! \param dataBytes[] pointer to first element in the data byte array
 //! \param numberBytes number of bytes to be used in CRC calculation
@@ -771,7 +798,7 @@ bool adsUnlockRegisters(void)
 //! \return 16-bit calculated CRC word
 //
 //*****************************************************************************
-uint16_t calculateCRC(const uint8_t dataBytes[], uint8_t numberBytes, uint16_t initialValue)
+uint16_t adsCalculateCRC(const uint8_t dataBytes[], uint8_t numberBytes, uint16_t initialValue)
 {
 	/* Check that "dataBytes" is not a null pointer */
 	assert(dataBytes != 0x00);
@@ -829,6 +856,69 @@ uint16_t calculateCRC(const uint8_t dataBytes[], uint8_t numberBytes, uint16_t i
 	}
 
 	return crc;
+}
+
+
+
+#ifdef CRC_CCITT
+	/* CCITT CRC polynomial = x^16 + x^12 + x^5 + 1 */
+	#define CRC_POLY	(0x1021)
+#elif defined (CRC_ANSI)
+	/* ANSI CRC polynomial = x^16 + x^15 + x^2 + 1 */
+	#define CRC_POLY	(0x8005)
+#endif
+
+//#define CRC_ALG_1	/* Algorithm 1 - 15.6 us - from ADS library example */
+#define CRC_ALG_2	/* Algorithm 2 - 4.8 us - from some old MSP430 forum */
+
+/*
+ * Calculates the 16-bit CRC for the selected CRC polynomial.
+ *
+ * @param dataBytes[]	pointer to first element in the data byte array
+ * @param numberBytes	data length, number of bytes to be used in CRC calculation
+ *
+ * @return		16-bit calculated CRC word
+ */
+_OPT_O3 uint16_t adsCalculateCRCfast(const uint8_t dataBytes[], uint8_t numberBytes)
+{
+#ifdef CRC_ALG_1
+	int         bitIndex;
+	bool        dataMSb;						/* Most significant bit of data byte */
+	bool        crcMSb;						    /* Most significant bit of crc byte  */
+    uint16_t crc = 0xFFFF;
+
+    // Loop through all bytes in the dataBytes[] array
+	for (int i = 0; i < numberBytes; i++)
+	{
+	    // Point to MSb in byte
+	    bitIndex = 0x80u;
+	    // Loop through all bits in the current byte
+	    while (bitIndex > 0)
+	    {	// Check MSB's of data and crc
+	        dataMSb = (bool) (dataBytes[i] & bitIndex);
+	        crcMSb  = (bool) (crc & 0x8000u);
+	        crc <<= 1;              /* Left shift CRC register */
+	        // Check if XOR operation of MSBs results in additional XOR operations
+	        if (dataMSb ^ crcMSb)
+	        	crc ^= CRC_POLY;        /* XOR crc with polynomial */
+	        /* Shift MSb pointer to the next data bit */
+	        bitIndex >>= 1;
+	    }
+	}
+	return crc;
+
+#elif defined (CRC_ALG_2)
+    uint16_t crc = 0xFFFF;
+    // Loop through all bytes in the dataBytes[] array
+	for (int i = 0; i < numberBytes; i++)
+	{
+		int_fast16_t x;
+		x = ((crc>>8) ^ dataBytes[i]) & 0xff;
+		x ^= x>>4;
+		crc = (crc << 8) ^ (x << 12) ^ (x <<5) ^ x;
+	}
+	return crc;
+#endif
 }
 
 
@@ -1046,7 +1136,7 @@ static uint8_t buildSPIarray ( const uint16_t opcodeArray[],
 
 #ifdef ENABLE_CRC_IN
     // Calculate CRC and put it into TX array
-    uint16_t crcWord = calculateCRC(&byteArray[0], numberOfBytes, 0xFFFF);
+    uint16_t crcWord = adsCalculateCRC(&byteArray[0], numberOfBytes, 0xFFFF);
     byteArray[(i*bytesPerWord) + 0] = upperByte(crcWord);
     byteArray[(i*bytesPerWord) + 1] = lowerByte(crcWord);
 #endif
