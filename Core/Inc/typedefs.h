@@ -50,7 +50,7 @@ struct sRegulatedVal
 	float fExtractVoltUserRef;	// reference from user
 	float fExtractVoltIaRef;	// reference from Ia regulator
 	float fExtractVoltLimit;	// limit set by user
-	uint32_t uAnodeCurrent;	// 0.1 uA unit - for settings
+	uint32_t uAnodeCurrent;	// 0.01 uA unit - for settings
 	enum eExtMode extMode;
 	enum eLoggerMode loggerMode;	// choose value to log
 };

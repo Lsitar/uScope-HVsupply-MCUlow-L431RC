@@ -125,7 +125,12 @@ int main(void)
 
 	/* TODO
 	 * WiP:
-	 * -
+	 * - co by tu zrobic, zeby poprawic metrologicznosc i stabilnosc. Zeby regulatory byly zawsze stabilne.
+	 * 		Najpierw bym przyspieszyl ADS i ogarnal przesyl po przerwaniach albo DMA. Wtedy mozna dluzsze filtry MovAvg.
+	 * 		Wtedy trzeba by dostroic regulatory. Ale bardziej zautomatyzowac to trzbea. Hm dalo by sie..
+	 * 		Ta funkcja osc dobrze mierzy okres, niech tylko jeszcze mierzy amplitude i bedzie mogla wykrywac
+	 * 		prog oscylacji i sama wyliczyc wspolczynniki do PID.
+	 * 		Odpowiedzi na skok tez trzeba by sprawdzic.
 	 *
 	 * bugs:
 	 * - voltage formating: always preserve place for sign (- for negative and space for positive).

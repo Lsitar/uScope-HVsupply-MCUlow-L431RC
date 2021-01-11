@@ -349,7 +349,7 @@ void uiScreenChange(enum eScreen newScreen)
 		printedCharsLine[0] = snprintf_(LCD_buff, 9, "%.0f V", (localRef.fCathodeVolt) );
 		HD44780_Puts(10, 0, LCD_buff);
 		// print IA
-		printedCharsLine[1] = snprintf_(LCD_buff, 9, "%.1f uA", (localRef.fAnodeCurrent * 1e6) );
+		printedCharsLine[1] = snprintf_(LCD_buff, 9, "%.2f uA", (localRef.fAnodeCurrent * 1e6) );
 		HD44780_Puts(10, 1, LCD_buff);
 		// print UF
 		printedCharsLine[2] = snprintf_(LCD_buff, 9, "%.0f V", (localRef.fFocusVolt) );
@@ -525,7 +525,7 @@ void uiScreenUpdate(void)
 		case SCREEN_SET_IA:
 			_blinkText(0, 1, "SET IA:");
 			_clearField(10, 1, printedCharsLine[1]);
-			printedCharsLine[1] = snprintf_(LCD_buff, 10, "%.1f uA", (localRef.fAnodeCurrent * 1e6) );
+			printedCharsLine[1] = snprintf_(LCD_buff, 10, "%.2f uA", (localRef.fAnodeCurrent * 1e6) );
 			HD44780_Puts(10, 1, LCD_buff);
 			break;
 
@@ -876,10 +876,10 @@ void encoderKnob_turnCallback(void)
 			// settings group 1 ////////////////////////////////////////////////////
 			if (actualScreen == SCREEN_SET_IA)
 			{
-				if ((setValue < 500)&&(setValue >= 0))		// 0 - 50 uA limit
+				if ((setValue < 4800)&&(setValue >= 0))		// 0 - 48.00 uA limit
 				{
 					localRef.uAnodeCurrent = setValue;
-					localRef.fAnodeCurrent = ((float)(localRef.uAnodeCurrent))/(1e+7);
+					localRef.fAnodeCurrent = ((float)(localRef.uAnodeCurrent))/(1e+8);
 				}
 			}
 			else if (actualScreen == SCREEN_SET_UC)

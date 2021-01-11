@@ -159,22 +159,6 @@ void adsStartup(void)
 	/* (OPTIONAL) Check STATUS register for faults */
 	uTimerProtection = HAL_GetTick();
 
-//	// load calibration coefficients
-//	fCoeffUc.gain = fCoeffUcDefault;
-//	fCoeffUc.offset = 0;
-//
-//	fCoeffUe.gain = fCoeffUeDefault;
-//	fCoeffUe.offset = 0;
-//
-//	fCoeffUf.gain = fCoeffUfDefault;
-//	fCoeffUf.offset = 0;
-//
-//	fCoeffIa.gain = fCoeffIaDefault;
-//	fCoeffIa.offset = 0;
-//
-//	fCoeffUp.gain = fCoeffUpDefault;
-//	fCoeffUp.offset = 0;
-
 }
 
 

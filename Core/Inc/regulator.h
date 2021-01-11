@@ -21,6 +21,7 @@ extern "C" {
 enum eLoggerMode
 {
 	LOGGER_IA,
+	LOGGER_UC,
 	LOGGER_UE,
 };
 
