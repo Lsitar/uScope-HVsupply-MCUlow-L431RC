@@ -34,21 +34,34 @@ void init_user( void )
 
 #ifdef MCU_HIGH
 
+	#ifdef USE_MOVAVG_UE_MCUHIGH
+		movAvgInit(&movAvgUe);
+	#endif
+	#ifdef USE_MOVAVG_UF_MCUHIGH
+		movAvgInit(&movAvgUf);
+	#endif
 	InitADC();
 
-#else
+#else // MCU_LOW
+
 	powerLockOn();
 	System.bHighSidePowered = false;
 	System.bCommunicationOk = false;
 	System.bLoggerOn = false;
 	System.bSweepOn = false;
 
-#ifdef USE_MOVAVG_IA_FILTER
-	movAvgInit(&movAvgIa);
-#endif
-#ifdef USE_MOVAVG_UE_FILTER
-	movAvgInit(&movAvgUe);
-#endif
+	#ifdef USE_MOVAVG_IA_FILTER
+		movAvgInit(&movAvgIa);
+	#endif
+	#ifdef USE_MOVAVG_UC_FILTER
+		movAvgInit(&movAvgUc);
+	#endif
+	#ifdef USE_MOVAVG_UE_MCULOW
+		movAvgInit(&movAvgUe);
+	#endif
+	#ifdef USE_MOVAVG_UF_MCULOW
+		movAvgInit(&movAvgUf);
+	#endif
 
 	System.meas.uAnodeCurrent = 0;
 	System.meas.fAnodeCurrent = NAN;
@@ -60,7 +73,7 @@ void init_user( void )
 	System.meas.fExtractVoltUserRef = NAN;
 	System.meas.fExtractVoltLimit = NAN;
 	System.meas.extMode = EXT_REGULATE_IA;
-	System.meas.loggerMode = LOGGER_IA;
+	System.meas.loggerMode = LOGGER_IA_UE_UF;
 
 	memcpy(&System.sweepResult, &System.meas, sizeof(struct sRegulatedVal));
 
@@ -93,8 +106,6 @@ void init_user( void )
 	uiInit();
 
 	InitADC();
-
-//	init_adc12();
 
 //	// UART - trigger first receiving
 //	HAL_UART_Receive_IT(&huart1, &(commFrame.uartRxBuff[0]), sizeof(struct sCommFrame));

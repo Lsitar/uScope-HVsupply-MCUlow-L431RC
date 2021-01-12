@@ -393,10 +393,12 @@ void uiScreenChange(enum eScreen newScreen)
 			printedCharsLine[2] = snprintf_(LCD_buff, 9, "SWEEP UE");
 		HD44780_Puts(10, 2, LCD_buff);
 		// print LOGGER
-		if (localRef.loggerMode == LOGGER_IA)
-			printedCharsLine[3] = snprintf_(LCD_buff, 9, "IA");
-		else if (localRef.loggerMode == LOGGER_UE)
-			printedCharsLine[3] = snprintf_(LCD_buff, 9, "UE");
+		if (localRef.loggerMode == LOGGER_IA_UE_UF)
+			printedCharsLine[3] = snprintf_(LCD_buff, 9, "Ia-Ue-Uf");
+		else if (localRef.loggerMode == LOGGER_HF_UC_STARTUP)
+			printedCharsLine[3] = snprintf_(LCD_buff, 9, "Uc Start");
+		else if (localRef.loggerMode == LOGGER_HF_UC_STEADY)
+			printedCharsLine[3] = snprintf_(LCD_buff, 10, "Uc Steady");
 		HD44780_Puts(10, 3, LCD_buff);
 		// correct blinking period
 		if (bBlink == true)
@@ -573,10 +575,12 @@ void uiScreenUpdate(void)
 		case SCREEN_SET_LOGGER:
 			_blinkText(0, 3, "Logger:");
 			_clearField(10, 3, printedCharsLine[3]);
-			if (localRef.loggerMode == LOGGER_IA)
-				printedCharsLine[3] = snprintf_(LCD_buff, 9, "IA");
-			else if (localRef.loggerMode == LOGGER_UE)
-				printedCharsLine[3] = snprintf_(LCD_buff, 9, "UE");
+			if (localRef.loggerMode == LOGGER_IA_UE_UF)
+				printedCharsLine[3] = snprintf_(LCD_buff, 9, "Ia-Ue-Uf");
+			else if (localRef.loggerMode == LOGGER_HF_UC_STARTUP)
+				printedCharsLine[3] = snprintf_(LCD_buff, 9, "Uc Start");
+			else if (localRef.loggerMode == LOGGER_HF_UC_STEADY)
+				printedCharsLine[3] = snprintf_(LCD_buff, 10, "Uc Steady");
 			HD44780_Puts(10, 3, LCD_buff);
 			break;
 
@@ -739,28 +743,36 @@ void keyboardRoutine(void)
 						}
 					}
 					else if (actualScreen == SCREEN_CONTROL_UE)
-					{
-						switch (System.ref.extMode)
-						{
-						case EXT_REGULATE_IA:
-						case EXT_STEADY:
+					{	// switch logger or sweep
+						if (System.ref.extMode == EXT_SWEEP)
 						{
 							if ((System.bSweepOn == false) && (System.bLoggerOn == false))
-								loggerInit();
-							break;
-						}
-						case EXT_SWEEP:
-							if ((System.bSweepOn == false) && (System.bLoggerOn == false))
-							{
+							{	// sweep and logger are off, start it
+								// NOTE: sweep omits logger function and always logs directly to logger buffers
 								if (System.bHighSidePowered)
 									sweepUeInit();
 							}
 							else
-							{
+							{	// cancel Ue sweep
 								if (System.bSweepOn)
+								{
 									sweepUeExit(false);
+									SPAM(("Sweep canceled\n"));
+								}
 							}
-							break;
+						}
+						else if ((System.bSweepOn == false) && (System.bLoggerOn == false))
+						{	// start logger
+							if (System.ref.loggerMode != LOGGER_HF_UC_STARTUP)
+							{
+								loggerInit();
+								System.bLoggerOn = true;
+							}
+						}
+						else if (System.bLoggerOn == true)
+						{	// cancel logger
+							System.bLoggerOn = false;
+							SPAM(("Logger canceled\n"));
 						}
 					}
 				}
@@ -776,7 +788,14 @@ void keyboardRoutine(void)
 					if (HAL_GPIO_ReadPin(TP32_GPIO_Port, TP32_Pin) == GPIO_PIN_RESET)	// HV enable switch - toggle
 					{
 						if (!IS_SETTINGS_SCREEN)
+						{
+							if (System.ref.loggerMode == LOGGER_HF_UC_STARTUP)
+							{
+								loggerInit();
+								System.bLoggerOn = true;
+							}
 							highSideStart();
+						}
 					}
 					else
 						highSideShutdown();
@@ -838,10 +857,12 @@ void encoderKnob_turnCallback(void)
 		}
 		else if (actualScreen == SCREEN_SET_LOGGER)
 		{	// change enum
-			if (localRef.loggerMode == LOGGER_IA)
-				localRef.loggerMode = LOGGER_UE;
+			if (localRef.loggerMode == LOGGER_IA_UE_UF)
+				localRef.loggerMode = LOGGER_HF_UC_STEADY;
+			else if (localRef.loggerMode == LOGGER_HF_UC_STEADY)
+				localRef.loggerMode = LOGGER_HF_UC_STARTUP;
 			else
-				localRef.loggerMode = LOGGER_IA;
+				localRef.loggerMode = LOGGER_IA_UE_UF;
 		}
 		else
 		{	// change numeric values

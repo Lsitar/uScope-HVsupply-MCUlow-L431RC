@@ -102,18 +102,18 @@ void calibOffset(void)
 
 /* Moving average filter -----------------------------------------------------*/
 
-struct sMovAvg movAvgIa, movAvgUc, movAvgUe, movAvgUf;
+struct sMovAvg	movAvgIa, 		\
+				movAvgUc, 		\
+				movAvgUe, 		\
+				movAvgUf;		\
 
 void movAvgInit(struct sMovAvg* movAvg)
 {
 	movAvg->fSum = 0.0f;
 	movAvg->uIndex = 0;
-//	fMovAvgSum = 0.0f;
-//	uMovAvgIndex = 0;
 
 	// set buff to 0.0 float (not 0x00 hex)
 	for (uint32_t i=0; i<MOVAVG_SIZE; i++)
-//		fMovAvgBuff[i] = 0.0f;
 		movAvg->fBuff[i] = 0.0f;
 }
 
@@ -122,43 +122,44 @@ void movAvgInit(struct sMovAvg* movAvg)
 float movAvgAddSample(struct sMovAvg* movAvg, float newSample)
 {
 	// remove oldest sample from sum
-//	fMovAvgSum -= fMovAvgBuff[uMovAvgIndex];
 	movAvg->fSum -= movAvg->fBuff[movAvg->uIndex];
 	// replace the old sample with new
-//	fMovAvgBuff[uMovAvgIndex] = newSample;
 	movAvg->fBuff[movAvg->uIndex] = newSample;
 	// add newest sample to sum
-//	fMovAvgSum += fMovAvgBuff[uMovAvgIndex];
 	movAvg->fSum += newSample;
 	// point to next (oldest) sample
-//	uMovAvgIndex++;
 	movAvg->uIndex++;
 	// wrap buffer
-//	if (uMovAvgIndex >= MOVAVG_SIZE)
 	if (movAvg->uIndex >= MOVAVG_SIZE)
 	{
 		// numeric error may accumulate and it may be necessary to re-calculate the sum after some time
-//		fMovAvgSum = 0.0f;
 		movAvg->fSum = 0.0f;
 		for (uint32_t i=0; i<MOVAVG_SIZE; i++)
-//			fMovAvgSum += fMovAvgBuff[i];
 			movAvg->fSum += movAvg->fBuff[i];
 
-//		uMovAvgIndex = 0;
 		movAvg->uIndex = 0;
 	}
 
-//	return fMovAvgSum / ((float)MOVAVG_SIZE);
 	return movAvg->fSum / ((float)MOVAVG_SIZE);
 }
+
 
 
 void calcualteSamples(void)
 {
 #ifdef MCU_HIGH
 
-    System.meas.fExtractVolt = fCoeffUe.gain * (System.ads.data.channel0 - fCoeffUe.offset);
-    System.meas.fFocusVolt = fCoeffUf.gain * (System.ads.data.channel1 - fCoeffUf.offset);
+	#ifdef USE_MOVAVG_UE_MCUHIGH
+		System.meas.fExtractVolt = movAvgAddSample(&movAvgUe, fCoeffUe.gain * (System.ads.data.channel0 - fCoeffUe.offset));
+	#else
+		System.meas.fExtractVolt = fCoeffUe.gain * (System.ads.data.channel0 - fCoeffUe.offset);
+	#endif
+
+	#ifdef USE_MOVAVG_UF_MCUHIGH
+		System.meas.fFocusVolt = movAvgAddSample(&movAvgUf, fCoeffUf.gain * (System.ads.data.channel1 - fCoeffUf.offset));
+	#else
+		System.meas.fFocusVolt = fCoeffUf.gain * (System.ads.data.channel1 - fCoeffUf.offset);
+	#endif
 
 #else // MCU_LOW
 

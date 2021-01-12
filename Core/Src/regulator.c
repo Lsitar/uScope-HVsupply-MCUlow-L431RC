@@ -16,8 +16,6 @@
 
 /* Private defines -----------------------------------------------------------*/
 
-#define LOGGER_BUFF_SIZE		2000
-
 #define PID_PERIOD	(0.01f)		// 10 ms
 #define PID_OUT_PWM_MIN	(0.0f)
 
@@ -157,8 +155,10 @@ void regulatorDeInit(void)
 
 /*
  * Call every PID_PERIOD s
+ * 32 us not optimized.
+ * 23 us at O3
  */
-void regulatorPeriodCallback(void)
+_OPT_O3 void regulatorPeriodCallback(void)
 {
 	/* Cathode voltage */
 	PIDInputSet(&pidUc, System.meas.fCathodeVolt);	// TODO to moze lepiej powiazac jakos z przerwaniem od ADS. Tylko te przerwania nie moga sie wcinac jedno w drugie. Teraz to ok, ale jak zrobie ADS na DMA to chyba bedzie sie wcinac.
@@ -280,12 +280,17 @@ void pidMeasOscPeriod(enum ePwmChannel PWM_CHANNEL_)
 
 /* Extract voltage sweep -----------------------------------------------------*/
 
+#define LOGGER_BUFF_SIZE		2000
+#define LOGGER_BUFF_MULT		4
+
 static uint32_t sweepFallingCnt;
 static float sweepPeakCurr;		// result (IA)
 static float sweepPeakVolt;		// result (UE)
 static uint32_t loggerBuffIndex;
-static float loggerBuffIa[LOGGER_BUFF_SIZE];	// 10 ms 0.5 V -> 500 V 10 s 1000 steps.
-static float loggerBuffUe[LOGGER_BUFF_SIZE];	// 10 ms 0.5 V -> 500 V 10 s 1000 steps.
+static float loggerBuffIa[LOGGER_BUFF_SIZE];	// 10 ms 0.5 V step -> 500 V 10 s in 1000 steps.
+static float loggerBuffUc[LOGGER_BUFF_SIZE*LOGGER_BUFF_MULT];	// increase buffer size for high freq logger
+static float loggerBuffUe[LOGGER_BUFF_SIZE];
+static float loggerBuffUf[LOGGER_BUFF_SIZE];
 static float fUserValueBackup;
 
 
@@ -311,9 +316,11 @@ void sweepUeInit(void)
 
 void loggerInit(void)
 {
-	SPAM(("Logger on,"));
+	SPAM(("%s\n", __func__));
 	memset(loggerBuffIa, 0x00, sizeof(loggerBuffIa));
-	//memset(loggerBuffUe, 0x00, sizeof(loggerBuffUe));
+	memset(loggerBuffUc, 0x00, sizeof(loggerBuffUc));
+	memset(loggerBuffUe, 0x00, sizeof(loggerBuffUe));
+	memset(loggerBuffUf, 0x00, sizeof(loggerBuffUf));
 	//fUserValueBackup = System.ref.fExtractVoltUserRef;
 	//System.ref.fExtractVoltUserRef = 0.0f;
 	//sweepFallingCnt = 0;
@@ -321,15 +328,14 @@ void loggerInit(void)
 
 	//sweepPeakCurr = 0.0f;
 	//sweepPeakVolt = 0.0f;
-	System.bLoggerOn = true;
 }
 
 
 
 /*
- * @brief	Sample Ue and Ia and increment Ue at calling frequency (period not
- * 			controlled internally). In this case, use same sampling time as
- * 			regulator period.
+ * @brief	Call it in regular periods to sample Ue and Ia and increment Ue at
+ * 			calling frequency (period not controlled internally). In this case,
+ * 			use same sampling time as regulator period.
  */
 void sweepUePeriod(void)
 {
@@ -380,43 +386,78 @@ void sweepUePeriod(void)
 
 void loggerPeriod(void)
 {
-	static uint32_t uTimestampText;
-	static uint32_t uIntervalCnt;
+	static uint32_t uTimeConsoleText;
+	static uint32_t uLogIntervalCnt;
 #ifdef LOGGER_250ms
 	const uint32_t uLogInterval = 25;
 #else
 	const uint32_t uLogInterval = 1;
 #endif
 
-
 	if (System.bLoggerOn)
 	{
-		uIntervalCnt++;
-		if (uIntervalCnt >=  uLogInterval)
+		uLogIntervalCnt++;
+		if (uLogIntervalCnt >=  uLogInterval)
 		{
-			uIntervalCnt = 0;
+			uLogIntervalCnt = 0;
 
 			// print something to indicate logging progress
-			if (HAL_GetTick() - uTimestampText > 1000)
+			if (HAL_GetTick() - uTimeConsoleText > 1000)
 			{
-				uTimestampText = HAL_GetTick();
+				uTimeConsoleText = HAL_GetTick();
 				ITM_SendChar('.');
 			}
 
 			// save sample
 			if (loggerBuffIndex < LOGGER_BUFF_SIZE)
 			{
-				if (System.ref.loggerMode == LOGGER_UE)
-					loggerBuffIa[loggerBuffIndex++] = System.meas.fExtractVolt;
-				else
-					loggerBuffIa[loggerBuffIndex++] = System.meas.fAnodeCurrent;
+				//if (System.ref.loggerMode == LOGGER_UE)
+				loggerBuffIa[loggerBuffIndex] = System.meas.fAnodeCurrent;
+				loggerBuffUc[loggerBuffIndex] = System.meas.fCathodeVolt;
+				loggerBuffUe[loggerBuffIndex] = System.meas.fExtractVolt;
+				loggerBuffUf[loggerBuffIndex] = System.meas.fFocusVolt;
+				loggerBuffIndex++;
 			}
 			else
 			// exit
 			{
-				SPAM((" Logger full.\n"));
+				SPAM(("Logger full.\n"));
 				System.bLoggerOn = false;
 			}
+		}
+	}
+}
+
+
+
+/*
+ * It's called at ADS samples Rx, logs every sample.
+ * Guard the call with checking logger mode, to not interact with slower logger.
+ */
+void loggerHighFreqSample(void)
+{
+	static uint32_t uTimeConsoleText;
+
+	if (System.bLoggerOn)
+	{
+		// print something to indicate logging progress
+		if (HAL_GetTick() - uTimeConsoleText > 1000)
+		{
+			uTimeConsoleText = HAL_GetTick();
+			ITM_SendChar('.');
+		}
+		// save sample
+		if (loggerBuffIndex < LOGGER_BUFF_SIZE*LOGGER_BUFF_MULT)
+		{
+			//loggerBuffUc[loggerBuffIndex++] = System.meas.fAnodeCurrent;
+			loggerBuffUc[loggerBuffIndex++] = System.meas.fCathodeVolt;
+		}
+		else
+		// exit
+		{
+			System.bLoggerOn = false;
+			loggerBuffIndex = 0;
+			SPAM(("Logger full.\n"));
 		}
 	}
 }

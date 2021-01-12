@@ -37,7 +37,7 @@
 // Headers
 //*********************************************************************************
 #include "pid_controller.h"
-
+#include "main.h"	// for _OPT definition
 //*********************************************************************************
 // Macros and Globals
 //*********************************************************************************
@@ -72,7 +72,7 @@ void PIDInit(PIDControl *pid, float kp, float ki, float kd,
     PIDTuningsSet(pid, kp, ki, kd);
 }
         
-bool
+_OPT_O3 bool
 PIDCompute(PIDControl *pid) 
 {
     float error, dInput;

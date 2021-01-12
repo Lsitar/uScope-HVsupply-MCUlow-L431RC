@@ -19,8 +19,22 @@ extern "C" {
 
 #define USE_MOVAVG_IA_FILTER
 #define USE_MOVAVG_UC_FILTER
-#define USE_MOVAVG_UE_FILTER
-#define USE_MOVAVG_UF_FILTER
+/*
+ * NOTE: at 250 SPS samples from MCU_HIGH could be filtered on LOW side after
+ * 		uart transmission. At 2 kSPS ca. 75 % samples is lost on uart throughput
+ * 		and the filter must be applied on HIGH side before uart communication.
+ */
+//#define USE_MOVAVG_UE_MCULOW
+#define USE_MOVAVG_UE_MCUHIGH
+//#define USE_MOVAVG_UF_MCULOW
+#define USE_MOVAVG_UF_MCUHIGH
+
+#if defined (USE_MOVAVG_UE_MCULOW) && defined (USE_MOVAVG_UE_MCUHIGH)
+	#error "don't use the UE filter twice"
+#endif
+#if defined (USE_MOVAVG_UF_MCULOW) && defined (USE_MOVAVG_UF_MCUHIGH)
+	#error "don't use the UF filter twice"
+#endif
 
 /* Exported types ------------------------------------------------------------*/
 
@@ -31,7 +45,10 @@ struct sMovAvg
 	uint32_t uIndex;
 };
 
-extern struct sMovAvg movAvgIa, movAvgUc, movAvgUe, movAvgUf;
+extern struct sMovAvg	movAvgIa, 		\
+						movAvgUc, 		\
+						movAvgUe, 		\
+						movAvgUf;		\
 
 /* Exported functions --------------------------------------------------------*/
 

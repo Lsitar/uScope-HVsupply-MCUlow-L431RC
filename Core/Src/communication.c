@@ -17,6 +17,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 static bool bIdle = true;
+static bool bLedSetByCommunication;
 
 static uint32_t cntTriggered = 0;
 static uint32_t cntReceived = 0;
@@ -42,7 +43,7 @@ union uCommFrame commFrame;
 
 /* Exported functions --------------------------------------------------------*/
 
-uint8_t crc8(const uint8_t *data, uint32_t length)
+_OPT_O3 uint8_t crc8(const uint8_t *data, uint32_t length)
 {
 	uint8_t crc = 0x00;
 	uint8_t extract;
@@ -81,11 +82,16 @@ void sendResults(void)
 	if (retVal != HAL_OK)
 	{
 		ledRed(ON);
+		bLedSetByCommunication = true;
 	}
 	else
 	{
 		cntTriggered++;
-		ledRed(OFF);
+		if (bLedSetByCommunication)
+		{
+			ledRed(OFF);
+			bLedSetByCommunication = false;
+		}
 	}
 //	if (cntTriggered % 100 == 0) SPAM(("Triggered: %u\n", cntTriggered));
 #else
@@ -199,7 +205,6 @@ void uartCustomIrqHandler(void)
 		USART1->ICR |= USART_ICR_IDLECF;
 		uartCustomRxTrigger();
 	}
-
 }
 #endif // CUSTOM_RX
 
@@ -228,8 +233,10 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	UNUSED(cntReceived);
 #ifdef MCU_HIGH
+
 	SPAM(("err: MCU high Rx!\n"));
 	return;
+
 #else // MCU_LOW
 	cntReceived++;
 
@@ -253,19 +260,25 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	if (commFrame.data.values.crc8 != crc8(commFrame.uartRxBuff, 2*sizeof(float)))
 	{
 		ledRed(ON);
+		bLedSetByCommunication = true;
 		System.bCommunicationOk = false;
 		//ITM_SendChar('x'); ITM_SendChar('\n');
 	}
 	else
 	{
-		ledRed(OFF);
-#ifdef USE_MOVAVG_UE_FILTER
+		if (bLedSetByCommunication)
+		{
+			ledRed(OFF);
+			bLedSetByCommunication = false;
+		}
+
+#ifdef USE_MOVAVG_UE_MCULOW
 		System.meas.fExtractVolt = movAvgAddSample(&movAvgUe, commFrame.data.values.fExtVolt);
 #else
 		memcpy(&System.meas.fExtractVolt, &commFrame.data.values.fExtVolt, sizeof(float));
 #endif
 
-#ifdef USE_MOVAVG_UF_FILTER
+#ifdef USE_MOVAVG_UF_MCULOW
 		System.meas.fFocusVolt = movAvgAddSample(&movAvgUf, commFrame.data.values.fFocusVolt);
 #else
 		memcpy(&System.meas.fFocusVolt, &commFrame.data.values.fFocusVolt, sizeof(float));

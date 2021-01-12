@@ -23,6 +23,7 @@
 #include "stm32l4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdbool.h>
 #include <string.h>
 #include "calibration.h"
 #include "communication.h"
@@ -33,7 +34,7 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN TD */
-
+static bool bLedSetBySPI;
 /* USER CODE END TD */
 
 /* Private define ------------------------------------------------------------*/
@@ -435,7 +436,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	#endif
 #else
 
-			testpin29(true);
+
 	#ifdef ADS_SPI_USE_INT
 			adsReadDataIT();
 	#elif defined (ADS_SPI_USE_DMA)
@@ -453,7 +454,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			}
 
 	#endif
-			testpin29(false);
+
 #endif
 
 		}
@@ -483,8 +484,7 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 		if (true == adsReadDataITcallback(&System.ads.data))
 		{
 			calcualteSamples();
-			ledRed(OFF);
-			ledBlue(BLINK);
+
 			if (uartIsIdle())
 			{
 				sendResults();
@@ -492,31 +492,45 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 			}
 			else
 				cntSkipped++;
+
+			ledBlue(BLINK);
+			if (bLedSetBySPI)
+			{
+				ledRed(OFF);
+				bLedSetBySPI = false;
+			}
 		}
 		else
 		{
 			cntWrong++;
 			ledRed(ON);
+			bLedSetBySPI = true;
 		}
 	#endif
 
 #else
 
 	#if defined (ADS_SPI_USE_INT) || defined (ADS_SPI_USE_DMA)
-		testpin29(true);
+
 //		adsSyncPulse();		// prevent occasionally Overrun error
 		if (true == adsReadDataITcallback(&System.ads.data))
 		{
 //			calibOffset();
 			calcualteSamples();
-			ledRed(OFF);
+			if (bLedSetBySPI)
+			{
+				ledRed(OFF);
+				bLedSetBySPI = false;
+			}
+			if ((System.ref.loggerMode == LOGGER_HF_UC_STEADY)||(System.ref.loggerMode == LOGGER_HF_UC_STARTUP))
+				loggerHighFreqSample();
 		}
 		else
 		{	// wrong crc
 			ITM_SendChar('*');
 		}
 		ledBlue(BLINK);
-		testpin29(false);
+
 	#endif
 
 #endif // MCU_HIGH
@@ -531,7 +545,6 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
  */
 void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
 {
-//	testpin29(true);
 //	SPAM(("ADS clbk err: %u\n", hspi->ErrorCode)); // ADS clbk err: 4
 
 //	System.ads.ready = false;
@@ -540,6 +553,7 @@ void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
 	adsSetCS(HIGH);
 	ledBlue(OFF);
 	ledRed(ON);
+	bLedSetBySPI = true;
 
 //	uint32_t errno = HAL_SPI_GetError(hspi);
 //	SPAM(("ADS clbk err: "));
@@ -569,7 +583,6 @@ void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
 	}
 	adsSyncPulse(); // according to ADS datasheet it doesnt do much, but somehow helps here
 
-//	testpin29(false);
 }
 #endif
 
@@ -581,8 +594,13 @@ void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	UNUSED(htim);
-	loggerPeriod();
-	sweepUePeriod();
+	// loggers take 2 us (inactive) - 5 us (active)
+	if (System.bSweepOn)
+		sweepUePeriod();
+	else if (System.ref.loggerMode == LOGGER_IA_UE_UF)
+		loggerPeriod();
+
+	// regulator takes 23 us
 	regulatorPeriodCallback();
 }
 

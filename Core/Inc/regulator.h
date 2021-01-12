@@ -20,9 +20,9 @@ extern "C" {
 
 enum eLoggerMode
 {
-	LOGGER_IA,
-	LOGGER_UC,
-	LOGGER_UE,
+	LOGGER_IA_UE_UF,
+	LOGGER_HF_UC_STEADY,
+	LOGGER_HF_UC_STARTUP,
 };
 
 enum ePwmChannel
@@ -76,6 +76,7 @@ void pidMeasOscPeriod(enum ePwmChannel PWM_CHANNEL_);	// for PID tuning
 
 void loggerInit(void);
 void loggerPeriod(void);
+void loggerHighFreqSample(void);
 
 void sweepUeInit(void);
 void sweepUePeriod(void);
