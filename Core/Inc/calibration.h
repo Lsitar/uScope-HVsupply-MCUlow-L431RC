@@ -15,7 +15,7 @@ extern "C" {
 
 /* Config --------------------------------------------------------------------*/
 
-#define MOVAVG_SIZE		10		// one size for all (may be modified to individual...)
+#define MOVAVG_SIZE		33		// one size for all (may be modified to individual...)
 
 #define USE_MOVAVG_IA_FILTER
 #define USE_MOVAVG_UC_FILTER
@@ -71,7 +71,7 @@ void initCoefficients(void);
  * 			Re-sets its variables to zero.
  */
 void movAvgInit(struct sMovAvg* movAvg);
-//void movAvgInit(void);
+
 
 float movAvgAddSample(struct sMovAvg* movAvg, float newSample);
 

@@ -229,25 +229,29 @@ static int32_t _printVoltage(float voltage, char* buff, uint8_t buffSize)
 	if (isnanf(voltage))
 		return snprintf_(buff, buffSize, "----- V");
 	else if (absVoltage < 100.0f)
-		return snprintf_(buff, buffSize, "%.2f V", voltage);
+		return snprintf_(buff, buffSize, "% .2f V", voltage);
 	else if (absVoltage < 1000.0f)
-		return snprintf_(buff, buffSize, "%.1f V", voltage);
+		return snprintf_(buff, buffSize, "% .1f V", voltage);
 	else
-		return snprintf_(buff, buffSize, "%.0f V", voltage);
+		return snprintf_(buff, buffSize, "% .0f V", voltage);
 }
 
 
 
 static int32_t _printCurrent(float current, char* buff, uint8_t buffSize)
 {
-	current = fabsf(current * 1000000.0f);	// convert to uA
+	current = /*fabsf*/(current * 1000000.0f);	// convert to uA
+	float absCurrent = fabsf(current);
 
 	if (isnanf(current))
 		return snprintf_(buff, buffSize, "----- uA");
-	else if (current < 49.0f)
-		return snprintf_(buff, buffSize, "%.2f uA", current);
-	else
+	else if (absCurrent < 49.0f)
+		return snprintf_(buff, buffSize, "% .2f uA", current);
+	// else overrange, positive or negative
+	else if (current > 0.0f)
 		return snprintf_(buff, buffSize, ">49.0 uA", current);
+	else
+		return snprintf_(buff, buffSize, "<-49.0 uA", current);
 }
 
 

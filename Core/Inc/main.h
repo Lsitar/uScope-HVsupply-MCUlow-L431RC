@@ -39,10 +39,18 @@ extern "C" {
 /* USER CODE BEGIN ET */
 
 // config
-//#define MCU_HIGH	// switch to code for High side MCU
+//#define MCU_HIGH	// switch to code for Kathode side (HVGND) MCU
+#define MCU_LOW	// switch to code for Anode side (GND, UI) MCU
+
+
+
 //#define ADS_SPI_USE_INT		// read ADS using SPI interrupts
 #define ADS_SPI_USE_DMA
 #define ADS_CHECK_CRC
+
+#if (defined (MCU_LOW) && defined (MCU_HIGH)) || ( !defined (MCU_LOW) && !defined (MCU_HIGH))
+	#error "wrong MCU selected - choose MCU_LOW or MCU_HIGH"
+#endif
 
 /* USER CODE END ET */
 

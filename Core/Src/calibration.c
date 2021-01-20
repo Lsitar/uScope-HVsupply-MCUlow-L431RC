@@ -145,6 +145,14 @@ float movAvgAddSample(struct sMovAvg* movAvg, float newSample)
 
 
 
+/*
+ * NOTE:	make sure this is executed in interrupt and don't preemptioned by
+ * 			routines using (System.meas). When using MovAvg filter, this routine
+ * 			stores in System.meas temporary (wrong) result to allow log
+ * 			highFreqLogger before filter. This can be modified to use local
+ * 			variable, but then logger must be modified to log variable given in
+ * 			parameter instead the global System.meas.
+ */
 void calcualteSamples(void)
 {
 #ifdef MCU_HIGH
@@ -163,16 +171,25 @@ void calcualteSamples(void)
 
 #else // MCU_LOW
 
+	System.meas.fAnodeCurrent = fCoeffIa.gain * (System.ads.data.channel0 - fCoeffIa.offset);
+	System.meas.fCathodeVolt = fCoeffUc.gain * (System.ads.data.channel1 - fCoeffUc.offset);
+
+	#ifdef LOGGER_BEFORE_FILTER
+		if ((System.ref.loggerMode == LOGGER_HF_UC_STEADY)||(System.ref.loggerMode == LOGGER_HF_UC_STARTUP))
+			loggerHighFreqSample(); /* Turn this on for sampling BEFORE filter */
+	#endif
+
 	#ifdef USE_MOVAVG_IA_FILTER
-		System.meas.fAnodeCurrent = movAvgAddSample(&movAvgIa, fCoeffIa.gain * (System.ads.data.channel0 - fCoeffIa.offset));
-	#else
-		System.meas.fAnodeCurrent = fCoeffIa.gain * (System.ads.data.channel0 - fCoeffIa.offset);
+		System.meas.fAnodeCurrent = movAvgAddSample(&movAvgIa, System.meas.fAnodeCurrent);
 	#endif
 
 	#ifdef USE_MOVAVG_UC_FILTER
-			System.meas.fCathodeVolt = movAvgAddSample(&movAvgUc, fCoeffUc.gain * (System.ads.data.channel1 - fCoeffUc.offset));
-	#else
-			System.meas.fCathodeVolt = fCoeffUc.gain * (System.ads.data.channel1 - fCoeffUc.offset);
+		System.meas.fCathodeVolt = movAvgAddSample(&movAvgUc, System.meas.fCathodeVolt);
+	#endif
+
+	#ifdef LOGGER_AFTER_FILTER
+		if ((System.ref.loggerMode == LOGGER_HF_UC_STEADY)||(System.ref.loggerMode == LOGGER_HF_UC_STARTUP))
+			loggerHighFreqSample(); /* Turn this on for sampling AFTER filter */
 	#endif
 
     //pidMeasOscPeriod(PWM_CHANNEL_UC);

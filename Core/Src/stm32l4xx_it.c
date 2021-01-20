@@ -101,6 +101,7 @@ void HardFault_Handler(void)
   while (1)
   {
     /* USER CODE BEGIN W1_HardFault_IRQn 0 */
+	  ledError(2);
     /* USER CODE END W1_HardFault_IRQn 0 */
   }
 }
@@ -522,8 +523,9 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 				ledRed(OFF);
 				bLedSetBySPI = false;
 			}
-			if ((System.ref.loggerMode == LOGGER_HF_UC_STEADY)||(System.ref.loggerMode == LOGGER_HF_UC_STARTUP))
-				loggerHighFreqSample();
+
+//			if ((System.ref.loggerMode == LOGGER_HF_UC_STEADY)||(System.ref.loggerMode == LOGGER_HF_UC_STARTUP))
+//				loggerHighFreqSample(); /* Turn this on for sampling before filter */
 		}
 		else
 		{	// wrong crc

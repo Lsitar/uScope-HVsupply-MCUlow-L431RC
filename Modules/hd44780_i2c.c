@@ -320,10 +320,11 @@ void HD44780_Init(uint8_t cols, uint8_t rows)
 
 void HD44780_Clear(void)
 {
+	uint32_t overflow = UINT32_MAX;
 	send(DataType_command, (uint8_t)HD44780_ClearDisplay);
 	// wait till all instructions will be sent to LCD
-	while (HD44780_dataBuff.flag_idle != true)
-		__NOP();
+	while (HD44780_dataBuff.flag_idle != true && overflow)
+		overflow--;
 	delay_us(4500);
 }
 

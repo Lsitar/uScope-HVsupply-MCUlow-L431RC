@@ -8,6 +8,7 @@
 #include <math.h>
 #include <string.h>
 #include "calibration.h"
+#include "main.h"		// for MCU_x definition before "regulator.h" header
 #include "stm32l4xx_hal.h"
 #include "pid_controller.h"
 #include "regulator.h"
@@ -74,9 +75,16 @@
  *
  * Kp = 0.45 * Ku = 67 500 000
  * Ki = 0.54 * Ku/Tu = 0.54 * (150 000 000 / 0.150) = 540 000 000
+ *
+ * MUST REPEAT CALIB WITH UF voltage
+ * (30000000.0f) is stable
+ * (40000000.0f) osc
+ * at (35000000.0f) osc 45 (37-50) ms
+ *
+ * Kp = (15750000.0f), Ki = (42000000.0f)
  */
-#define PID_IA_KP	(67500000.0f)
-#define PID_IA_KI	(540000000.0f)
+#define PID_IA_KP	(15750000.0f)	//#define PID_IA_KP	(67500000.0f)
+#define PID_IA_KI	(42000000.0f)	//	(300000000.0f)	//#define PID_IA_KI	(540000000.0f)
 #define PID_IA_KD	(0.0f)
 #define PID_OUT_MAX_IA	(System.ref.fExtractVoltLimit)			//(2500.0f)	// max UE ref - TODO set it dynamically from variable
 
@@ -280,15 +288,24 @@ void pidMeasOscPeriod(enum ePwmChannel PWM_CHANNEL_)
 
 /* Extract voltage sweep -----------------------------------------------------*/
 
+/*
+ * NOTE:	currently, values from logger are intended to be copied from RAM to
+ * 			spreadsheet on PC via debugger on halted core, from Expressions
+ * 			view. The practical limit is ca. 2000 records, while copying longer
+ * 			buffers the IDE crashes. Even copying one larger buffer [8000] in
+ * 			portions of 1000 samples is unreliable. Better is to save several
+ * 			buffer not longer than [2000] in sequence and copy them
+ * 			independently, merge in spreadsheet.
+ */
 #define LOGGER_BUFF_SIZE		2000
-#define LOGGER_BUFF_MULT		4
 
 static uint32_t sweepFallingCnt;
 static float sweepPeakCurr;		// result (IA)
 static float sweepPeakVolt;		// result (UE)
+static uint32_t highFreqBuffNo;
 static uint32_t loggerBuffIndex;
 static float loggerBuffIa[LOGGER_BUFF_SIZE];	// 10 ms 0.5 V step -> 500 V 10 s in 1000 steps.
-static float loggerBuffUc[LOGGER_BUFF_SIZE*LOGGER_BUFF_MULT];	// increase buffer size for high freq logger
+static float loggerBuffUc[LOGGER_BUFF_SIZE];	// increase buffer size for high freq logger
 static float loggerBuffUe[LOGGER_BUFF_SIZE];
 static float loggerBuffUf[LOGGER_BUFF_SIZE];
 static float fUserValueBackup;
@@ -323,9 +340,9 @@ void loggerInit(void)
 	memset(loggerBuffUf, 0x00, sizeof(loggerBuffUf));
 	//fUserValueBackup = System.ref.fExtractVoltUserRef;
 	//System.ref.fExtractVoltUserRef = 0.0f;
-	//sweepFallingCnt = 0;
+//	sweepFallingCnt = 0;
 	loggerBuffIndex = 0;
-
+	highFreqBuffNo = 0;
 	//sweepPeakCurr = 0.0f;
 	//sweepPeakVolt = 0.0f;
 }
@@ -339,14 +356,18 @@ void loggerInit(void)
  */
 void sweepUePeriod(void)
 {
-	const float fStepVolt = 0.5f;
+	//const float fStepVolt = 0.5f;	// 0.5 V * 2 kS = 1000 V
+	const float fStepVolt = 0.25f;	// 0.25 V * 2 kS = 500 V
 
 	if (System.bSweepOn && System.ref.extMode == EXT_SWEEP)
 	{
 		if (loggerBuffIndex < LOGGER_BUFF_SIZE)
 		{
 			loggerBuffIa[loggerBuffIndex] = System.meas.fAnodeCurrent;
-			loggerBuffUe[loggerBuffIndex++] = System.meas.fExtractVolt;
+			loggerBuffUc[loggerBuffIndex] = System.meas.fCathodeVolt;
+			loggerBuffUe[loggerBuffIndex] = System.meas.fExtractVolt;
+			loggerBuffUf[loggerBuffIndex] = System.meas.fFocusVolt;
+			loggerBuffIndex++;
 		}
 
 		// change only ref, will be set by regulator loop (allow little overdrive)
@@ -364,20 +385,15 @@ void sweepUePeriod(void)
 			sweepFallingCnt++;
 
 		// check exit conditions (current falling or volt limit)
-//			if (   ( (System.meas.fExtractVolt > 0.25f * System.ref.fExtractVoltLimit) && (sweepFallingCnt > 100))
-//				|| (System.meas.fExtractVolt > System.ref.fExtractVoltLimit)   )
-//			{
-//				sweepUeExit(true); // TODO temp exit on falling current should be true, and on the voltage should be false
-//			}
-		if ((System.meas.fExtractVolt > (0.25f * System.ref.fExtractVoltLimit)) && (sweepFallingCnt > 100))
-		{
-			SPAM(("falling, "));
-			sweepUeExit(true);
-		}
+//		if ((System.meas.fExtractVolt > (0.25f * System.ref.fExtractVoltLimit)) && (sweepFallingCnt > 100))
+//		{
+//			SPAM(("falling, "));
+//			sweepUeExit(true);
+//		}
 		if (System.meas.fExtractVolt > System.ref.fExtractVoltLimit)
 		{
 			SPAM(("voltage, "));
-			sweepUeExit(true);
+			sweepUeExit(true); // TODO temp exit on falling current should be true, and on the voltage should be false
 		}
 	} // bSweepOn
 }
@@ -390,7 +406,7 @@ void loggerPeriod(void)
 	static uint32_t uLogIntervalCnt;
 #ifdef LOGGER_250ms
 	const uint32_t uLogInterval = 25;
-#else
+#elif defined (LOGGER_10ms)
 	const uint32_t uLogInterval = 1;
 #endif
 
@@ -447,17 +463,46 @@ void loggerHighFreqSample(void)
 			ITM_SendChar('.');
 		}
 		// save sample
-		if (loggerBuffIndex < LOGGER_BUFF_SIZE*LOGGER_BUFF_MULT)
+		if (loggerBuffIndex < LOGGER_BUFF_SIZE)
 		{
-			//loggerBuffUc[loggerBuffIndex++] = System.meas.fAnodeCurrent;
-			loggerBuffUc[loggerBuffIndex++] = System.meas.fCathodeVolt;
+			if (highFreqBuffNo == 0)
+			{
+				#ifdef LOGGER_LOG_HF_IA
+					loggerBuffIa[loggerBuffIndex++] = System.meas.fAnodeCurrent;
+				#elif defined (LOGGER_LOG_HF_UC)
+					loggerBuffIa[loggerBuffIndex++] = System.meas.fCathodeVolt;
+				#endif
+			} else if (highFreqBuffNo == 1) {
+				#ifdef LOGGER_LOG_HF_IA
+					loggerBuffUc[loggerBuffIndex++] = System.meas.fAnodeCurrent;
+				#elif defined (LOGGER_LOG_HF_UC)
+					loggerBuffUc[loggerBuffIndex++] = System.meas.fCathodeVolt;
+				#endif
+			} else if (highFreqBuffNo == 2) {
+				#ifdef LOGGER_LOG_HF_IA
+					loggerBuffUe[loggerBuffIndex++] = System.meas.fAnodeCurrent;
+				#elif defined (LOGGER_LOG_HF_UC)
+					loggerBuffUe[loggerBuffIndex++] = System.meas.fCathodeVolt;
+				#endif
+			} else if (highFreqBuffNo == 3) {
+				#ifdef LOGGER_LOG_HF_IA
+					loggerBuffUf[loggerBuffIndex++] = System.meas.fAnodeCurrent;
+				#elif defined (LOGGER_LOG_HF_UC)
+					loggerBuffUf[loggerBuffIndex++] = System.meas.fCathodeVolt;
+				#endif
+			}
 		}
 		else
 		// exit
 		{
-			System.bLoggerOn = false;
+			highFreqBuffNo++;
 			loggerBuffIndex = 0;
-			SPAM(("Logger full.\n"));
+			if (highFreqBuffNo >= 4)
+			{
+				System.bLoggerOn = false;
+				loggerBuffIndex = 0;
+				SPAM(("Logger full.\n"));
+			}
 		}
 	}
 }

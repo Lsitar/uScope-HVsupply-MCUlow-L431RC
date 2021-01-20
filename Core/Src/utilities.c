@@ -85,6 +85,8 @@ void ledError(uint32_t errNo)
 		ledRed(OFF);
 		HAL_Delay(delay);
 	}
+
+	HAL_Delay(delay + delay + delay + delay);
 }
 
 
