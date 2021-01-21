@@ -37,6 +37,7 @@ enum eScreen
 	SCREEN_POWERON_1,
 	SCREEN_POWERON_2,
 	SCREEN_POWEROFF,
+	SCREEN_LOWBATT,
 };
 
 /* Exported functions --------------------------------------------------------*/

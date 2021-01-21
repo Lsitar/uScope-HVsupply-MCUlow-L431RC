@@ -32,6 +32,8 @@ void init_user( void )
 
 	initCoefficients();
 
+	HAL_ADC_Start_IT(&hadc1);
+
 #ifdef MCU_HIGH
 
 	#ifdef USE_MOVAVG_UE_MCUHIGH
@@ -48,8 +50,10 @@ void init_user( void )
 	System.bHighSidePowered = false;
 	System.bCommunicationOk = false;
 	System.bLoggerOn = false;
+	System.bLowBatt = false;
 	System.bSweepOn = false;
 
+		movAvgInit(&movAvgAdcBatt);
 	#ifdef USE_MOVAVG_IA_FILTER
 		movAvgInit(&movAvgIa);
 	#endif

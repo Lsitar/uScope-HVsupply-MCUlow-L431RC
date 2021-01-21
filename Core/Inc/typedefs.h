@@ -50,7 +50,7 @@ struct sRegulatedVal
 	float fExtractVoltUserRef;	// reference from user
 	float fExtractVoltIaRef;	// reference from Ia regulator
 	float fExtractVoltLimit;	// limit set by user
-	uint32_t uAnodeCurrent;	// 0.01 uA unit - for settings
+	uint32_t uAnodeCurrent;		// 0.01 uA unit - for settings
 	enum eExtMode extMode;
 	enum eLoggerMode loggerMode;	// choose value to log
 };
@@ -62,9 +62,12 @@ struct sSystem
 	struct sRegulatedVal sweepResult;
 	bool bCommunicationOk;
 	bool bHighSidePowered;
+	bool bLowBatt;
 	bool bSweepOn;
 	bool bLoggerOn;
 	adsStatus_t ads;
+	float battVolt;
+	uint32_t battProc;
 };
 
 extern struct sSystem System;

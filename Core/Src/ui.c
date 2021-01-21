@@ -432,6 +432,10 @@ void uiScreenChange(enum eScreen newScreen)
 	case SCREEN_POWEROFF:
 		HD44780_Puts(5, 2, "Power off");
 		break;
+
+	case SCREEN_LOWBATT:
+		HD44780_Puts(5, 2, "Low batt!");
+		break;
 	}
 	actualScreen = newScreen;
 	uScreenTimer = HAL_GetTick();
@@ -474,11 +478,13 @@ void uiScreenUpdate(void)
 			printedCharsLine[1] = _printCurrent(System.meas.fAnodeCurrent, LCD_buff, 11);
 			HD44780_Puts(9, 1, LCD_buff);
 			// line 3 - Anode power
-			_clearField(9, 2, printedCharsLine[2]);
-			printedCharsLine[2] = _printPower((System.meas.fCathodeVolt * System.meas.fAnodeCurrent), LCD_buff, 11);
-			HD44780_Puts(9, 2, LCD_buff);
+			_clearField(10, 2, printedCharsLine[2]);
+			printedCharsLine[2] = _printPower((System.meas.fCathodeVolt * System.meas.fAnodeCurrent), LCD_buff, 10);
+			HD44780_Puts(10, 2, LCD_buff);
 			// line 4 - Battery SoC TODO
-			_clearField(9, 0, printedCharsLine[3]);
+			_clearField(9, 3, printedCharsLine[3]);
+			printedCharsLine[3] = snprintf_(LCD_buff, 11, "%3u%% %.1fV", System.battProc, System.battVolt);
+			HD44780_Puts(9, 3, LCD_buff);
 			break;
 		}
 		case SCREEN_2: // Ue Uf Up
@@ -499,6 +505,8 @@ void uiScreenUpdate(void)
 			HD44780_Puts(9, 2, LCD_buff);
 			// line 4 - Battery SoC TODO
 			_clearField(9, 3, printedCharsLine[3]);
+			printedCharsLine[3] = snprintf_(LCD_buff, 11, "%3u%% %.1fV", System.battProc, System.battVolt);
+			HD44780_Puts(9, 3, LCD_buff);
 			break;
 
 		case SCREEN_CONTROL_UE:
@@ -591,6 +599,7 @@ void uiScreenUpdate(void)
 		case SCREEN_POWERON_1:
 		case SCREEN_POWERON_2:
 		case SCREEN_POWEROFF:
+		case SCREEN_LOWBATT:
 			break;
 		}
 	}
@@ -624,8 +633,9 @@ void keyboardRoutine(void)
 
 			if (uKeysPressedTime[KEY_POWER] > KB_HOLD_THRESHOLD)
 			{
-				HD44780_Clear();
-				HD44780_Puts(5, 2, "Power off");
+//				HD44780_Clear();
+//				HD44780_Puts(5, 2, "Power off");
+				uiScreenChange(SCREEN_POWEROFF);
 				highSideShutdown();
 				powerLockOff();
 				while(0xDEADBABE);

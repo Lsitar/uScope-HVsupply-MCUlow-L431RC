@@ -105,7 +105,8 @@ void calibOffset(void)
 struct sMovAvg	movAvgIa, 		\
 				movAvgUc, 		\
 				movAvgUe, 		\
-				movAvgUf;		\
+				movAvgUf,		\
+				movAvgAdcBatt;	\
 
 void movAvgInit(struct sMovAvg* movAvg)
 {

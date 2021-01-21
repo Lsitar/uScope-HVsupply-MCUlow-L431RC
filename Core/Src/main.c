@@ -199,14 +199,24 @@ int main(void)
 		  InitADC();
 	  }
 #else
-	  keyboardRoutine();
+	keyboardRoutine();
 
-	  uiScreenUpdate();
+	uiScreenUpdate();
 
-	  if (System.ads.error)
-	  {
-		  InitADC();
-	  }
+	if (System.battVolt < 3.0f)
+	{
+		System.bLowBatt = true;
+		uiScreenChange(SCREEN_LOWBATT);
+		HAL_Delay(1000);
+		highSideShutdown();
+		powerLockOff();
+		while(0xDEADBABE);
+	}
+
+	if (System.ads.error)
+	{
+		InitADC();
+	}
 #endif // MCU_HIGH
   }
   /* USER CODE END 3 */
@@ -296,7 +306,7 @@ static void MX_ADC1_Init(void)
   /** Common config
   */
   hadc1.Instance = ADC1;
-  hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV128;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;

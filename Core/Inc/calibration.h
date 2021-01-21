@@ -48,7 +48,8 @@ struct sMovAvg
 extern struct sMovAvg	movAvgIa, 		\
 						movAvgUc, 		\
 						movAvgUe, 		\
-						movAvgUf;		\
+						movAvgUf,		\
+						movAvgAdcBatt;	\
 
 /* Exported functions --------------------------------------------------------*/
 
