@@ -124,8 +124,12 @@ static inline void testpin29(bool state)
 
 void ledDemo(void);
 void ledError(uint32_t);
+
+bool flashErase(uint32_t addr);
+void flashTest(void);
+
 void delay_us(uint32_t us);
-//void delay_ms(uint32_t ms);
+
 static inline void delay_ms(uint32_t ms)
 {
 	while ( ms-- ) delay_us(1000);

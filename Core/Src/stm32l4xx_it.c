@@ -197,6 +197,14 @@ void SysTick_Handler(void)
 {
   /* USER CODE BEGIN SysTick_IRQn 0 */
 
+	if (commWatchdog > 0)
+		commWatchdog--;
+	else
+	{
+		System.bCommunicationOk = false;
+		ledGreen(OFF);
+	}
+
   /* USER CODE END SysTick_IRQn 0 */
   HAL_IncTick();
   /* USER CODE BEGIN SysTick_IRQn 1 */
@@ -399,15 +407,16 @@ void TIM6_DAC_IRQHandler(void)
 
 /* USER CODE BEGIN 1 */
 
+/*
+ * Reads battery voltage.
+ */
 _OPT_O3 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
-	testpin29(true);
 	// period 2.5 ms
 	float fVolt = 6.6f * (3.74f/3.64f) * (float)(HAL_ADC_GetValue(&hadc1))/4095.0f;
 	System.battVolt = movAvgAddSample(&movAvgAdcBatt, fVolt);
 	System.battProc = (uint32_t)(100.0f * (System.battVolt - 3.0f)/1.2f);
 	HAL_ADC_Start_IT(&hadc1);
-	testpin29(false);
 }
 
 

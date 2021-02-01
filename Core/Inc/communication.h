@@ -41,7 +41,10 @@ union uCommFrame
 //	uint16_t uartRxBuff[sizeof(struct sCommFrame) + 2];
 };
 
+/* Exported variables --------------------------------------------------------*/
+
 extern union uCommFrame commFrame;
+extern int32_t commWatchdog;
 
 /* Exported functions --------------------------------------------------------*/
 

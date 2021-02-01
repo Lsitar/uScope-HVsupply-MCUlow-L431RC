@@ -26,6 +26,8 @@ static uint32_t cntSent = 0;
 /* Global variables ----------------------------------------------------------*/
 
 union uCommFrame commFrame;
+int32_t commWatchdog;	// The value is re-set when correct msg is received on uart.
+						// It is decreased at SysTick and when reaches 0, regulation stops.
 
 /* Private functions ---------------------------------------------------------*/
 
@@ -231,16 +233,12 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	UNUSED(cntReceived);
+	cntReceived++;
 #ifdef MCU_HIGH
-
 	SPAM(("err: MCU high Rx!\n"));
 	return;
 
 #else // MCU_LOW
-	cntReceived++;
-
-	ledGreen(BLINK);
 
 	// check frame errors
 	if (commFrame.data.bErrFrame || commFrame.data.bErrNoise || commFrame.data.bErrOverrun || commFrame.data.bErrParity)
@@ -259,6 +257,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
 	if (commFrame.data.values.crc8 != crc8(commFrame.uartRxBuff, 2*sizeof(float)))
 	{
+		ledGreen(OFF);
 		ledRed(ON);
 		bLedSetByCommunication = true;
 		System.bCommunicationOk = false;
@@ -266,6 +265,9 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	}
 	else
 	{
+		System.bCommunicationOk = true;
+		commWatchdog = 4;
+		ledGreen(BLINK);
 		if (bLedSetByCommunication)
 		{
 			ledRed(OFF);
@@ -283,7 +285,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 #else
 		memcpy(&System.meas.fFocusVolt, &commFrame.data.values.fFocusVolt, sizeof(float));
 #endif
-		System.bCommunicationOk = true;
+
 //		pidMeasOscPeriod(PWM_CHANNEL_UE);
 //		pidMeasOscPeriod(PWM_CHANNEL_UF);
 	}
