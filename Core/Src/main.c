@@ -185,7 +185,6 @@ int main(void)
   HAL_NVIC_DisableIRQ(EXTI4_IRQn);
   init_user();
 
-  //flashTest();
   /* USER CODE END 2 */
 
   /* Infinite loop */

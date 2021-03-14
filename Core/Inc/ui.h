@@ -2,7 +2,7 @@
  * ui.h
  *
  *  Created on: Dec 21, 2020
- *      Author: lukasz
+ *      Author: Lukasz Sitarek
  */
 
 #pragma once
@@ -37,6 +37,7 @@ enum eScreen
 	SCREEN_POWERON_1,
 	SCREEN_POWERON_2,
 	SCREEN_POWEROFF,
+	SCREEN_AUTOPOWEROFF,
 	SCREEN_LOWBATT,
 };
 

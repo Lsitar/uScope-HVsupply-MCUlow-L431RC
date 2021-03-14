@@ -2,7 +2,7 @@
  * hd44780_i2c_DMA.c
  *
  *  Created on: Aug 5, 2020
- *      Author: lukasz
+ *      Author: Lukasz Sitarek
  *
  * HOW to use this driver
  * 1. call HD44780_Init()

@@ -2,7 +2,7 @@
  * calibration.h
  *
  *  Created on: Dec 30, 2020
- *      Author: lukasz
+ *      Author: Lukasz Sitarek
  */
 
 #pragma once

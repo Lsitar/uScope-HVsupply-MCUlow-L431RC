@@ -2,7 +2,7 @@
  * logger.c
  *
  *  Created on: Jan 29, 2021
- *      Author: lukasz
+ *      Author: Lukasz Sitarek
  */
 
 #include <math.h>
@@ -119,6 +119,7 @@ void sweepUePeriod(void)
 //		}
 		if (System.meas.fExtractVolt > System.ref.fExtractVoltLimit)
 		{
+			/* SET BREAKPOINT HERE */
 			SPAM(("voltage, "));
 			sweepUeExit(true); // TODO temp exit on falling current should be true, and on the voltage should be false
 		}
@@ -164,6 +165,7 @@ void loggerPeriod(void)
 			else
 			// exit
 			{
+				/* SET BREAKPOINT HERE */
 				SPAM(("Logger full.\n"));
 				System.bLoggerOn = false;
 			}
@@ -240,7 +242,7 @@ void sweepUeExit(bool success)
 {
 	SPAM(("%s\n", __func__));
 
-	memcpy(&System.sweepResult, &System.meas, sizeof(struct sRegulatedVal));
+	memcpy(&System.sweepResult, &System.meas, sizeof(tsRegulatedVal));
 	if (success == true)
 	{
 		System.sweepResult.fAnodeCurrent = sweepPeakCurr;

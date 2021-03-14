@@ -2,7 +2,7 @@
  * calibration.c
  *
  *  Created on: Dec 30, 2020
- *      Author: lukasz
+ *      Author: Lukasz Sitarek
  */
 
 #include "calibration.h"

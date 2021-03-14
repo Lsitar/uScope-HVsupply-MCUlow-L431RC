@@ -2,7 +2,7 @@
  * communication.c
  *
  *  Created on: Dec 24, 2020
- *      Author: lukasz
+ *      Author: Lukasz Sitarek
  */
 
 #include <string.h>
@@ -44,30 +44,6 @@ int32_t commWatchdog;	// The value is re-set when correct msg is received on uar
 //}
 
 /* Exported functions --------------------------------------------------------*/
-
-_OPT_O3 uint8_t crc8(const uint8_t *data, uint32_t length)
-{
-	uint8_t crc = 0x00;
-	uint8_t extract;
-	uint8_t sum;
-
-	for(uint32_t i=0; i<length; i++)
-	{
-		extract = *data;
-		for (uint32_t tempI = 8; tempI; tempI--)
-		{
-			sum = (crc ^ extract) & 0x01;
-			crc >>= 1;
-			if (sum)
-				crc ^= 0x8C;
-			extract >>= 1;
-		}
-		data++;
-	}
-	return crc;
-}
-
-
 
 void sendResults(void)
 {
@@ -116,6 +92,8 @@ void uartReceiveFrameIT(void)
 		SPAM(("Rx init error: %u\n", retVal));
 	}
 }
+
+
 
 #ifdef CUSTOM_RX
 /*

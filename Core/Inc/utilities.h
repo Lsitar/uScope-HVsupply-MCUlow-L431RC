@@ -2,7 +2,7 @@
  * utilities.h
  *
  *  Created on: Dec 13, 2020
- *      Author: lukasz
+ *      Author: Lukasz Sitarek
  */
 
 #pragma once
@@ -10,6 +10,7 @@
 #include <stdbool.h>
 #include "main.h"	// for GPIO's name definition, HAL lib, System struct
 #include "printf.h"	// for SPAM macro
+#include "typedefs.h"	// for tsRegulatedVal definition
 
 /* Exported types ------------------------------------------------------------*/
 
@@ -20,6 +21,22 @@ enum eState
 	TOGGLE,
 	BLINK,
 };
+
+#define FLASH_DATA_PARTS	((uint32_t)((sizeof(tsRegulatedVal)/sizeof(uint64_t))+1))
+
+typedef union
+{
+	struct
+	{
+		tsRegulatedVal data;
+		uint8_t crc;
+	} flashData;
+
+	uint64_t buff64[FLASH_DATA_PARTS];
+	uint8_t buff8[FLASH_DATA_PARTS * sizeof(uint64_t)];
+} tuFlashData;
+
+extern tuFlashData uFlashData;
 
 /* Exported inline snippets --------------------------------------------------*/
 
@@ -122,17 +139,15 @@ static inline void testpin29(bool state)
 
 /* Exported functions --------------------------------------------------------*/
 
+void delay_us(uint32_t us);
+static inline void delay_ms(uint32_t ms) { while ( ms-- ) delay_us(1000); }
+
+uint8_t crc8(const uint8_t *, uint32_t);
+
 void ledDemo(void);
 void ledError(uint32_t);
 
-bool flashErase(uint32_t addr);
-void flashTest(void);
-
-void delay_us(uint32_t us);
-
-static inline void delay_ms(uint32_t ms)
-{
-	while ( ms-- ) delay_us(1000);
-}
+bool flashReadConfig(void);
+void flashSaveConfig(void);
 
 /************************ (C) COPYRIGHT LSITA ******************END OF FILE****/

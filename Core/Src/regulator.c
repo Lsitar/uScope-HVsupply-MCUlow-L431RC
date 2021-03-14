@@ -2,7 +2,7 @@
  * regulator.c
  *
  *  Created on: Dec 27, 2020
- *      Author: lukasz
+ *      Author: Lukasz Sitarek
  */
 
 #include <math.h>

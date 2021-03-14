@@ -2,7 +2,7 @@
  * typedefs.h
  *
  *  Created on: Dec 20, 2020
- *      Author: lukasz
+ *      Author: Lukasz Sitarek
  */
 #pragma once
 
@@ -39,7 +39,7 @@ enum eExtMode
 	EXT_SWEEP,
 };
 
-struct sRegulatedVal
+typedef struct
 {	// direct regulated values
 	float fAnodeCurrent;
 	float fCathodeVolt;
@@ -53,13 +53,13 @@ struct sRegulatedVal
 	uint32_t uAnodeCurrent;		// 0.01 uA unit - for settings
 	enum eExtMode extMode;
 	enum eLoggerMode loggerMode;	// choose value to log
-};
+} tsRegulatedVal;
 
 struct sSystem
 {
-	struct sRegulatedVal meas;
-	struct sRegulatedVal ref;
-	struct sRegulatedVal sweepResult;
+	tsRegulatedVal meas;
+	tsRegulatedVal ref;
+	tsRegulatedVal sweepResult;
 	bool bCommunicationOk;
 	bool bHighSidePowered;
 	bool bLowBatt;

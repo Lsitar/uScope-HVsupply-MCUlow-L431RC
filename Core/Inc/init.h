@@ -2,7 +2,7 @@
  * init.h
  *
  *  Created on: Dec 19, 2020
- *      Author: lukasz
+ *      Author: Lukasz Sitarek
  */
 
 #pragma once

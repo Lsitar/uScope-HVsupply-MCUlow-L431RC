@@ -2,7 +2,7 @@
  * hd44780_i2c_DMA_link.h
  *
  *  Created on: Dec 18, 2020
- *      Author: lukasz
+ *      Author: Lukasz Sitarek
  *
  *  Description
  *  Link file between portable hd44780_i2c_DMA implementation and target MCU for

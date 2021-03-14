@@ -1,15 +1,14 @@
 /*
- * gui.c
+ * ui.c
  *
  *  Created on: Dec 21, 2020
- *      Author: lukasz
+ *      Author: Lukasz Sitarek
  */
 #include <string.h>
 #include "communication.h"
 #include "hd44780_i2c.h"
 #include "main.h"
 #include "math.h"
-//#include "pid_controller.h"
 #include "printf.h"
 #include "regulator.h"
 #include "typedefs.h"
@@ -27,14 +26,14 @@ static uint32_t uScreenTimer;			// measure time from last screenChange
 static bool bBlink;						// helper variable for blinking text on screen
 static int printedCharsLine[4] = {0};	// save number of value digits plotted in each line
 
-static struct sRegulatedVal localRef;	// local copy of values changed at settings
+static tsRegulatedVal localRef;			// local copy of values changed at settings
 static int32_t setDigit = 1;
 
 /* config / constants --------------------------------------------------------*/
 
 #define KB_READ_INTERVAL		50	// ms
 #define KB_PRESSED_THRESHOLD	2	// ticks ca. 100 ms
-#define KB_HOLD_THRESHOLD	40	// ticks ca. 2 s
+#define KB_HOLD_THRESHOLD		40	// ticks ca. 2 s
 #define LCD_UPDATERATE_MS		250	// 4 Hz
 #define LCD_BLINK_TIME			333	// ms per state. NOTE: possible blinking pe-
 									// riod is limited down to LCD_UPDATERATE_MS
@@ -433,6 +432,10 @@ void uiScreenChange(enum eScreen newScreen)
 		HD44780_Puts(5, 2, "Power off");
 		break;
 
+	case SCREEN_AUTOPOWEROFF:
+		HD44780_Puts(3, 2, "Auto power off");
+		break;
+
 	case SCREEN_LOWBATT:
 		HD44780_Puts(5, 2, "Low batt!");
 		break;
@@ -599,6 +602,7 @@ void uiScreenUpdate(void)
 		case SCREEN_POWERON_1:
 		case SCREEN_POWERON_2:
 		case SCREEN_POWEROFF:
+		case SCREEN_AUTOPOWEROFF:
 		case SCREEN_LOWBATT:
 			break;
 		}
@@ -633,10 +637,9 @@ void keyboardRoutine(void)
 
 			if (uKeysPressedTime[KEY_POWER] > KB_HOLD_THRESHOLD)
 			{
-//				HD44780_Clear();
-//				HD44780_Puts(5, 2, "Power off");
 				uiScreenChange(SCREEN_POWEROFF);
 				highSideShutdown();
+				flashSaveConfig();
 				powerLockOff();
 				while(0xDEADBABE);
 			}

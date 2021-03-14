@@ -2,7 +2,7 @@
  * init.c
  *
  *  Created on: Dec 19, 2020
- *      Author: lukasz
+ *      Author: Lukasz Sitarek
  */
 
 #include <math.h>	// NAN
@@ -28,7 +28,7 @@
  */
 void init_user( void )
 {
-	memset(&System, 0x00, sizeof (System));
+	memset(&System, 0x00, sizeof(System));
 
 	initCoefficients();
 
@@ -79,19 +79,27 @@ void init_user( void )
 	System.meas.extMode = EXT_REGULATE_IA;
 	System.meas.loggerMode = LOGGER_IA_UE_UF;
 
-	memcpy(&System.sweepResult, &System.meas, sizeof(struct sRegulatedVal));
+	memcpy(&System.sweepResult, &System.meas, sizeof(tsRegulatedVal));
 
-	// TODO here may load previous settings from flash
-	System.ref.extMode = EXT_REGULATE_IA;
-	System.ref.uAnodeCurrent = 60;
-	System.ref.fAnodeCurrent = 6e-7;
-	System.ref.fCathodeVolt = -2500.0f;
-	System.ref.fExtractVolt = 0.0f;
-	System.ref.fExtractVoltIaRef = 0.0f;
-	System.ref.fExtractVoltUserRef = 0.0f;
-	System.ref.fExtractVoltLimit = 500.0f;
-	System.ref.fFocusVolt = 0.0f;
-	System.ref.fPumpVolt = 0.0f;
+	if (flashReadConfig())
+	{	// error loading settings from flash - set default
+		SPAM(("Settings read error! load default\n"));
+		System.ref.extMode = EXT_REGULATE_IA;
+		System.ref.uAnodeCurrent = 60;
+		System.ref.fAnodeCurrent = 6e-7;
+		System.ref.fCathodeVolt = -2500.0f;
+		System.ref.fExtractVolt = 0.0f;
+		System.ref.fExtractVoltIaRef = 0.0f;
+		System.ref.fExtractVoltUserRef = 0.0f;
+		System.ref.fExtractVoltLimit = 500.0f;
+		System.ref.fFocusVolt = 0.0f;
+		System.ref.fPumpVolt = 0.0f;
+	}
+	else
+	{	// settings from flash loaded - apply
+		memcpy(&System.ref, uFlashData.buff8, sizeof(tsRegulatedVal));
+		SPAM(("Settings loaded from flash\n"));
+	}
 
 	// output PWM
 	pwmSetDuty(PWM_CHANNEL_UC, 0.0f);

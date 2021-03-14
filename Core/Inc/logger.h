@@ -2,7 +2,7 @@
  * logger.h
  *
  *  Created on: Jan 29, 2021
- *      Author: lukasz
+ *      Author: Lukasz Sitarek
  */
 
 #pragma once
@@ -28,6 +28,8 @@
 #if (defined (LOGGER_BEFORE_FILTER) && defined (LOGGER_AFTER_FILTER)) || ( !defined (LOGGER_BEFORE_FILTER) && !defined (LOGGER_AFTER_FILTER))
 	#error "wrong Logger config - use LOGGER_BEFORE_FILTER or LOGGER_AFTER_FILTER"
 #endif
+
+#include <stdbool.h>
 
 /* Exported types ------------------------------------------------------------*/
 
